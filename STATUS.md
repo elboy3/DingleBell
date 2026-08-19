@@ -38,7 +38,7 @@ not just a static checklist.
 - [ ] [MANUAL] Run `python -m apt_agent.gmail_auth`, approve in browser
 - [ ] [MANUAL] Set up saved-search alerts on StreetEasy/Zillow/RentHop/NakedApartments -> the same inbox, set to "instant" not "daily digest"
 - [x] [CLAUDE-ASSISTED] Edit `config.yaml` price range / beds/baths minimums (tell Claude the numbers, it makes the edit)
-- [ ] [MANUAL] Create a new **public** GitHub repo, push this code
+- [x] [MANUAL] Create a new **public** GitHub repo, push this code
 - [ ] [MANUAL] Add the 4 repo secrets (`GMAIL_CREDENTIALS_JSON`, `GMAIL_TOKEN_JSON`, `NOTIFY_RECIPIENTS`, `NOTIFY_FROM_ADDRESS`)
 - [ ] [MANUAL] Trigger a dry-run via Actions tab -> "Run workflow", confirm the TEST email arrives
 - [ ] [MANUAL] Trigger the heartbeat workflow manually, confirm the "agent is alive" email arrives
