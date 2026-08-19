@@ -17,7 +17,12 @@ on:
     # Overnight ET 11pm-7am -> UTC 03:00-10:59
     # -> every 30 min, since very little new inventory posts overnight.
     - cron: "*/30 3-10 * * *"
-  workflow_dispatch: {}   # lets you click "Run workflow" manually to test
+  workflow_dispatch:      # lets you click "Run workflow" manually to test
+    inputs:
+      dry_run:
+        description: "Send one fake test alert instead of polling Gmail"
+        type: boolean
+        default: false
 
 jobs:
   poll:
@@ -47,7 +52,7 @@ jobs:
         env:
           NOTIFY_RECIPIENTS: ${{ secrets.NOTIFY_RECIPIENTS }}
           NOTIFY_FROM_ADDRESS: ${{ secrets.NOTIFY_FROM_ADDRESS }}
-        run: python -m apt_agent.main
+        run: python -m apt_agent.main ${{ (github.event.inputs.dry_run == 'true') && '--dry-run' || '' }}
 
       - name: Commit updated listings.db
         # This is what makes dedup actually persist across runs - GitHub
