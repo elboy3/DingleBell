@@ -32,7 +32,7 @@ not just a static checklist.
 
 ### Deploy (your turn now)
 - [x] [MANUAL] Create Google Cloud project, enable Gmail API
-- [ ] [MANUAL] Create OAuth Desktop credentials, download `credentials.json`
+- [x] [MANUAL] Create OAuth Desktop credentials, download `credentials.json`
 - [ ] [MANUAL] Switch OAuth consent screen to Production status (avoids 7-day token expiry)
 - [ ] [MANUAL] Run `pip install -r requirements.txt` in your real environment
 - [ ] [MANUAL] Run `python -m apt_agent.gmail_auth`, approve in browser
