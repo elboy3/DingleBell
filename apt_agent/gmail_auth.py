@@ -18,6 +18,8 @@ Scopes requested:
   - gmail.send      (optional, only needed if you want the agent itself
                       to send the alert emails from this same Gmail account
                       instead of a separate SMTP/SES sender)
+  - gmail.modify    (needed to clear the UNREAD label off processed alert
+                      emails so they aren't reprocessed on the next poll)
 """
 import os
 from google.auth.transport.requests import Request
@@ -27,6 +29,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
     "https://www.googleapis.com/auth/gmail.send",
+    "https://www.googleapis.com/auth/gmail.modify",
 ]
 
 CREDENTIALS_FILE = "credentials.json"

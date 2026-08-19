@@ -49,27 +49,58 @@ def _decode_body(payload) -> str:
 
 def extract_listing_urls(html: str) -> list[str]:
     """Pull unique listing-detail URLs out of an alert email body."""
-    urls = set()
+    return [url for url, _snippet in extract_listings_with_snippets(html)]
+
+
+def extract_listings_with_snippets(html: str) -> list[tuple[str, str]]:
+    """
+    Pull unique listing-detail URLs out of an alert email body, each paired
+    with a nearby text snippet - used by
+    `listing_parser.extract_from_email_snippet()` to pull price/beds/baths
+    straight from the alert email instead of fetching the listing page
+    (StreetEasy/Zillow 403 on direct page fetches - see CLAUDE.md known
+    limitations). Snippet-per-URL (not one global blob) matters because a
+    single alert email usually contains many listings.
+    """
+    found = {}  # url -> snippet, insertion order preserved (dict, py3.7+)
 
     soup = BeautifulSoup(html, "html.parser")
     for a in soup.find_all("a", href=True):
         for pattern in _COMPILED_PATTERNS:
             if pattern.match(a["href"]):
-                urls.add(a["href"].split("?")[0])  # strip tracking params
+                url = a["href"].split("?")[0]  # strip tracking params
+                if url in found:
+                    break
+                # The anchor's own text is often just "View listing" or an
+                # image - climb up to a parent (the listing "card") until
+                # we find enough text to plausibly contain price/beds/baths.
+                node, snippet, hops = a, a.get_text(" ", strip=True), 0
+                while len(snippet) < 20 and node.parent is not None and hops < 4:
+                    node = node.parent
+                    snippet = node.get_text(" ", strip=True)
+                    hops += 1
+                found[url] = snippet
+                break
 
-    # fallback: raw regex over the text too, in case links aren't <a> tags
+    # fallback: raw regex over the text too, in case links aren't <a> tags -
+    # grab a window of surrounding text since there's no element to climb.
     for pattern in _COMPILED_PATTERNS:
-        for match in pattern.findall(html):
-            urls.add(match.split("?")[0])
+        for match in pattern.finditer(html):
+            url = match.group(0).split("?")[0]
+            if url in found:
+                continue
+            start, end = max(0, match.start() - 300), min(len(html), match.end() + 300)
+            found[url] = BeautifulSoup(html[start:end], "html.parser").get_text(" ", strip=True)
 
-    return sorted(urls)
+    return list(found.items())
 
 
-def fetch_new_alert_urls(query: str, mark_as_read: bool = True) -> list[str]:
+def fetch_new_alert_urls(query: str, mark_as_read: bool = True) -> list[tuple[str, str]]:
     """
-    Query Gmail for unread alert emails matching `query`, extract listing
-    URLs from all of them, and (optionally) mark those emails as read so
-    we don't reprocess them next poll.
+    Query Gmail for unread alert emails matching `query`, extract
+    (listing URL, nearby text snippet) pairs from all of them, and
+    (optionally) mark those emails as read so we don't reprocess them
+    next poll.
     """
     service = _get_service()
     results = (
@@ -80,7 +111,7 @@ def fetch_new_alert_urls(query: str, mark_as_read: bool = True) -> list[str]:
     )
     message_ids = [m["id"] for m in results.get("messages", [])]
 
-    all_urls = []
+    all_listings = []
     for msg_id in message_ids:
         msg = (
             service.users()
@@ -89,18 +120,18 @@ def fetch_new_alert_urls(query: str, mark_as_read: bool = True) -> list[str]:
             .execute()
         )
         body = _decode_body(msg["payload"])
-        all_urls.extend(extract_listing_urls(body))
+        all_listings.extend(extract_listings_with_snippets(body))
 
         if mark_as_read:
             service.users().messages().modify(
                 userId="me", id=msg_id, body={"removeLabelIds": ["UNREAD"]}
             ).execute()
 
-    # dedup while preserving order
+    # dedup while preserving order (same URL could appear in >1 email)
     seen = set()
     deduped = []
-    for u in all_urls:
-        if u not in seen:
-            seen.add(u)
-            deduped.append(u)
+    for url, snippet in all_listings:
+        if url not in seen:
+            seen.add(url)
+            deduped.append((url, snippet))
     return deduped

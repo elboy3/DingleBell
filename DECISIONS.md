@@ -128,3 +128,25 @@ than a full build, with these specific simplifications and why:
 
 Status: designed, not built. Depends on Phase 2's taste-profile
 foundation existing first.
+
+### Switched from page-fetch to email-snippet parsing on day one of deploy
+`listing_parser.fetch_listing_page()` hit real 403s from both StreetEasy
+and Zillow immediately during initial deploy testing (2026-08-19), not
+"eventually" as the original caveat anticipated. Worse than a missed
+listing: `main.py` was silently dropping every URL that failed to fetch
+before it ever reached `store.save()`, so the daily heartbeat's "seen"
+count would read 0 too - indistinguishable from "no new listings
+posted," a real silent-failure risk.
+
+Fixed by switching `run_once()` to `extract_from_email_snippet()`
+(already written, previously unused) instead of fetching the listing
+page at all. `gmail_ingest.py` now extracts a per-listing text snippet
+alongside each URL (climbing from the `<a>` tag to a parent element
+with enough text, since a single alert email holds many listings and a
+global regex over the whole email would bleed one listing's price into
+another's). Address extraction still returns `None` from the snippet
+path (deliberately not guessed at without real sample HTML - a wrong
+guess causing a false-positive address-dedup collision is worse than
+no address). Net effect: weaker cross-source dedup on listings with no
+extractable address, stronger overall reliability - acceptable given
+goal #1 (breadth of discovery) outweighs a possible duplicate alert.

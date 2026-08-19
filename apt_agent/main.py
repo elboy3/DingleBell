@@ -8,20 +8,20 @@ or the GitHub Actions workflow in .github/workflows/poll.yml).
                                          # without waiting for a real alert
 
 Flow per run:
-  1. Pull new alert emails from Gmail -> extract listing URLs
+  1. Pull new alert emails from Gmail -> extract listing URLs + snippets
   2. Skip URLs already in the dedup DB
-  3. Fetch + parse each new listing page (best-effort)
+  3. Extract price/beds/baths/availability from the alert email snippet
+     (not a page fetch - StreetEasy/Zillow 403 direct scraping)
   4. Apply hard filters (price / beds / baths / move-in window)
   5. Skip if we've already alerted on this address from a different site
   6. Save to DB, send email alert on every listing that passes
 """
 import argparse
 import os
-import sys
 import yaml
 
 from .gmail_ingest import fetch_new_alert_urls
-from .listing_parser import fetch_listing_page, parse_listing_html
+from .listing_parser import extract_from_email_snippet
 from .filters import passes_filters
 from .store import ListingStore
 from .notify import send_alert
@@ -84,19 +84,14 @@ def process_listing(listing: dict, cfg: dict, store: ListingStore) -> bool:
 def run_once(cfg: dict) -> int:
     store = ListingStore(cfg["storage"]["db_path"])
 
-    urls = fetch_new_alert_urls(cfg["gmail"]["label_or_query"])
+    listings_found = fetch_new_alert_urls(cfg["gmail"]["label_or_query"])
     alert_count = 0
 
-    for url in urls:
+    for url, snippet in listings_found:
         if store.already_seen(url):
             continue
 
-        html = fetch_listing_page(url)
-        if html is None:
-            print(f"[skip] could not fetch {url}", file=sys.stderr)
-            continue
-
-        listing = parse_listing_html(html, url)
+        listing = extract_from_email_snippet(snippet, url)
         if process_listing(listing, cfg, store):
             alert_count += 1
 

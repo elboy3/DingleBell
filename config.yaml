@@ -25,8 +25,16 @@ search:
   pets_required: false
 
 gmail:
-  # The inbox that receives StreetEasy/Zillow/RentHop/NakedApartments alerts
-  label_or_query: "in:inbox (from:streeteasy.com OR from:zillow.com OR from:renthop.com OR from:nakedapartments.com) is:unread"
+  # The inbox that receives StreetEasy/Zillow/RentHop/NakedApartments alerts.
+  # newer_than:1d matters here - this is an existing personal Gmail account
+  # with years of unread StreetEasy/Zillow backlog (old marketing emails,
+  # an unrelated old home search), not a fresh inbox. Without a date bound,
+  # is:unread would pull that whole backlog in as if it were new, 50
+  # messages at a time every poll - and some could slip through filters.py
+  # as false positives, since it treats unextractable price/beds/baths as
+  # "unknown, don't block it" (intentional for real ambiguous listings, but
+  # dangerous applied to years-old unrelated mail).
+  label_or_query: "in:inbox (from:streeteasy.com OR from:zillow.com OR from:renthop.com OR from:nakedapartments.com) is:unread newer_than:1d"
   poll_interval_seconds: 180   # 3 min - tune based on Gmail API quota comfort
 
 notify:
