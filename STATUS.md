@@ -36,7 +36,11 @@ not just a static checklist.
 - [x] [MANUAL] Switch OAuth consent screen to Production status (avoids 7-day token expiry)
 - [x] [MANUAL] Run `pip install -r requirements.txt` in your real environment
 - [x] [MANUAL] Run `python -m apt_agent.gmail_auth`, approve in browser
-- [ ] [MANUAL] Set up saved-search alerts on StreetEasy/Zillow/RentHop/NakedApartments -> the same inbox, set to "instant" not "daily digest"
+- [MANUAL] Set up saved-search alerts on StreetEasy/Zillow/RentHop/NakedApartments -> the same inbox, set to "instant" not "daily digest"
+  - [x] StreetEasy
+  - [ ] Zillow
+  - [ ] RentHop
+  - [ ] NakedApartments
 - [x] [CLAUDE-ASSISTED] Edit `config.yaml` price range / beds/baths minimums (tell Claude the numbers, it makes the edit)
 - [x] [MANUAL] Create a new **public** GitHub repo, push this code
 - [ ] [MANUAL] Add the 4 repo secrets (`GMAIL_CREDENTIALS_JSON`, `GMAIL_TOKEN_JSON`, `NOTIFY_RECIPIENTS`, `NOTIFY_FROM_ADDRESS`)
