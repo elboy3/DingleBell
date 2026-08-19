@@ -1,0 +1,44 @@
+# ---- Apartment Agent Config ----
+
+search:
+  # Move-in window: 1-2 wk flex early, 1-2 day flex late
+  earliest_move_in: "2026-09-01"
+  latest_move_in: "2026-10-03"
+
+  price_min: 5000
+  price_max: 10000
+
+  beds_min: 1
+  baths_min: 1
+
+  # Cast a WIDER net than your manual search - Claude-side taste
+  # filtering (Phase 2) will do the fine sorting later.
+  neighborhoods:
+    - "Brooklyn Heights"
+    - "Cobble Hill"
+    - "Fort Greene"
+    - "Boerum Hill"
+    - "Clinton Hill"
+    - "Prospect Heights"
+
+  no_fee_only: false        # false = show both fee and no-fee
+  pets_required: false
+
+gmail:
+  # The inbox that receives StreetEasy/Zillow/RentHop/NakedApartments alerts
+  label_or_query: "in:inbox (from:streeteasy.com OR from:zillow.com OR from:renthop.com OR from:nakedapartments.com) is:unread"
+  poll_interval_seconds: 180   # 3 min - tune based on Gmail API quota comfort
+
+notify:
+  # These are placeholders. In the public-repo/GitHub Actions deployment,
+  # NOTIFY_RECIPIENTS and NOTIFY_FROM_ADDRESS env vars (set from GitHub
+  # Secrets) override these at runtime so real addresses never sit in a
+  # public repo. For local runs, just edit these directly.
+  recipients:
+    - "echartock3@gmail.com"
+    - "mad.danoff@gmail.com"
+  from_address: "echartock3@gmail.com"
+  subject_prefix: "[Apt Alert]"
+
+storage:
+  db_path: "listings.db"

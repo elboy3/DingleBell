@@ -1,0 +1,9 @@
+listings.db is intentionally NOT ignored - it gets committed back to
+the repo by the workflow after each run so dedup state survives across
+GitHub Actions' ephemeral runners. See poll.yml for the commit step.
+credentials.json
+token.json
+__pycache__/
+*.pyc
+agent.log
+.venv/

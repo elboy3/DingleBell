@@ -1,0 +1,34 @@
+name: Apartment Agent Heartbeat
+
+on:
+  schedule:
+    # Once daily at 8am ET = 12:00 UTC during EDT (covers your full window)
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Reconstruct Gmail OAuth files from secrets
+        run: |
+          echo '${{ secrets.GMAIL_CREDENTIALS_JSON }}' > credentials.json
+          echo '${{ secrets.GMAIL_TOKEN_JSON }}' > token.json
+
+      - name: Send heartbeat
+        env:
+          NOTIFY_RECIPIENTS: ${{ secrets.NOTIFY_RECIPIENTS }}
+          NOTIFY_FROM_ADDRESS: ${{ secrets.NOTIFY_FROM_ADDRESS }}
+        run: python -m apt_agent.heartbeat

@@ -1,0 +1,75 @@
+name: Apartment Agent Poll
+
+on:
+  # Runs on a normal push are needed so the DB-commit step below doesn't
+  # trigger recursive workflow runs - schedule/dispatch only is safe here.
+  schedule:
+    # Times below are in UTC (GitHub cron doesn't support timezones).
+    # NY is UTC-4 during EDT (through early Nov), which covers your
+    # whole 6-week window - no DST adjustment needed in that time.
+    #
+    # Daytime/evening ET 7am-11pm -> UTC 11:00-02:59 (wraps past midnight)
+    # -> every 15 min, since most new listings post during business hours
+    #    plus an evening bump.
+    - cron: "*/15 11-23 * * *"
+    - cron: "*/15 0-2 * * *"
+    #
+    # Overnight ET 11pm-7am -> UTC 03:00-10:59
+    # -> every 30 min, since very little new inventory posts overnight.
+    - cron: "*/30 3-10 * * *"
+  workflow_dispatch: {}   # lets you click "Run workflow" manually to test
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write   # needed to commit listings.db back to the repo
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Reconstruct Gmail OAuth files from secrets
+        run: |
+          echo '${{ secrets.GMAIL_CREDENTIALS_JSON }}' > credentials.json
+          echo '${{ secrets.GMAIL_TOKEN_JSON }}' > token.json
+
+      - name: Run agent
+        id: run_agent
+        env:
+          NOTIFY_RECIPIENTS: ${{ secrets.NOTIFY_RECIPIENTS }}
+          NOTIFY_FROM_ADDRESS: ${{ secrets.NOTIFY_FROM_ADDRESS }}
+        run: python -m apt_agent.main
+
+      - name: Commit updated listings.db
+        # This is what makes dedup actually persist across runs - GitHub
+        # Actions runners are ephemeral, so without committing the DB
+        # back, every run would start from empty and re-alert everything.
+        if: success()
+        run: |
+          git config user.name "apartment-agent-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add listings.db
+          if ! git diff --cached --quiet; then
+            git commit -m "Update listings.db [skip ci]"
+            git pull --rebase origin ${{ github.ref_name }}
+            git push
+          else
+            echo "No DB changes to commit."
+          fi
+
+      - name: Send failure alert email
+        if: failure()
+        env:
+          NOTIFY_RECIPIENTS: ${{ secrets.NOTIFY_RECIPIENTS }}
+          NOTIFY_FROM_ADDRESS: ${{ secrets.NOTIFY_FROM_ADDRESS }}
+          GITHUB_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python -m apt_agent.notify_failure
