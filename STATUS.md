@@ -33,7 +33,7 @@ not just a static checklist.
 ### Deploy (your turn now)
 - [x] [MANUAL] Create Google Cloud project, enable Gmail API
 - [x] [MANUAL] Create OAuth Desktop credentials, download `credentials.json`
-- [ ] [MANUAL] Switch OAuth consent screen to Production status (avoids 7-day token expiry)
+- [x] [MANUAL] Switch OAuth consent screen to Production status (avoids 7-day token expiry)
 - [ ] [MANUAL] Run `pip install -r requirements.txt` in your real environment
 - [ ] [MANUAL] Run `python -m apt_agent.gmail_auth`, approve in browser
 - [ ] [MANUAL] Set up saved-search alerts on StreetEasy/Zillow/RentHop/NakedApartments -> the same inbox, set to "instant" not "daily digest"
