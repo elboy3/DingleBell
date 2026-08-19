@@ -43,8 +43,8 @@ not just a static checklist.
   - [ ] NakedApartments
 - [x] [CLAUDE-ASSISTED] Edit `config.yaml` price range / beds/baths minimums (tell Claude the numbers, it makes the edit)
 - [x] [MANUAL] Create a new **public** GitHub repo, push this code
-- [ ] [MANUAL] Add the 4 repo secrets (`GMAIL_CREDENTIALS_JSON`, `GMAIL_TOKEN_JSON`, `NOTIFY_RECIPIENTS`, `NOTIFY_FROM_ADDRESS`)
-- [ ] [MANUAL] Trigger a dry-run via Actions tab -> "Run workflow", confirm the TEST email arrives
+- [x] [MANUAL] Add the 4 repo secrets (`GMAIL_CREDENTIALS_JSON`, `GMAIL_TOKEN_JSON`, `NOTIFY_RECIPIENTS`, `NOTIFY_FROM_ADDRESS`)
+- [x] [MANUAL] Trigger a dry-run via Actions tab -> "Run workflow", confirm the TEST email arrives
 - [ ] [MANUAL] Trigger the heartbeat workflow manually, confirm the "agent is alive" email arrives
 - [ ] [MANUAL] Let it run 1-2 days on real alerts
 
