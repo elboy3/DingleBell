@@ -45,15 +45,22 @@ not just a static checklist.
 - [x] [MANUAL] Create a new **public** GitHub repo, push this code
 - [x] [MANUAL] Add the 4 repo secrets (`GMAIL_CREDENTIALS_JSON`, `GMAIL_TOKEN_JSON`, `NOTIFY_RECIPIENTS`, `NOTIFY_FROM_ADDRESS`)
 - [x] [MANUAL] Trigger a dry-run via Actions tab -> "Run workflow", confirm the TEST email arrives
-- [ ] [MANUAL] Trigger the heartbeat workflow manually, confirm the "agent is alive" email arrives
+- [x] [MANUAL] Trigger the heartbeat workflow manually, confirm the "agent is alive" email arrives
 - [ ] [MANUAL] Let it run 1-2 days on real alerts
 
 ### Confirm (blocker before Phase 2)
-- [ ] [MANUAL] You confirm it's been working reliably end-to-end
+- [x] [MANUAL] You confirm it's been working reliably end-to-end
+  - **2026-08-20**: Confirmed by user with known gaps explicitly accepted
+    rather than resolved: Zillow/RentHop/NakedApartments saved searches
+    not yet set up, no hard neighborhood filter (site-level trust only),
+    address never makes it into the alert email, and no genuine
+    saved-search-match alert email seen yet (only a generic
+    recommendations digest). Revisit these if real-world alerts turn out
+    noisy or off-target.
 
 ---
 
-## Phase 2 - Taste/style scoring [NOT STARTED - blocked on Phase 1 confirmation]
+## Phase 2 - Taste/style scoring [IN PROGRESS - started 2026-08-20]
 
 - [ ] [MANUAL] Send reference photos of apartments you both liked/disliked
 - [ ] [CLAUDE] Derive a written taste profile from those photos
