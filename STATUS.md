@@ -91,3 +91,22 @@ not just a static checklist.
 - **2026-08-19**: Phase 1 built and smoke-tested. Phase 2.5 (texting agent)
   designed and documented, not started. Currently at "your turn to deploy"
   step of Phase 1.
+- **2026-08-19/20**: Deployed through most of Phase 1's checklist (Google
+  Cloud project, OAuth, config.yaml, public repo, GitHub Secrets, dry-run
+  + heartbeat both confirmed via real emails). Found and fixed two real
+  bugs surfaced by real-world testing, not hypothetical: (1) OAuth scope
+  missing `gmail.modify`, needed to mark alert emails as read - token
+  redone locally + secret updated; (2) Gmail query had no date bound, so
+  it was pulling years of unread StreetEasy/Zillow backlog on this
+  existing personal account in as if new, at risk of false-positive
+  alerts since filters.py treats unknown fields as "let it through" -
+  added `newer_than:1d`. Also switched ingestion from page-fetch (403s
+  immediately on both StreetEasy and Zillow) to email-snippet parsing.
+  See DECISIONS.md for full reasoning. No bogus alerts were ever sent -
+  verified `listings.db` is empty. Zillow's real alert-email links turned
+  out to be wrapped in click-tracking redirects the URL regex won't
+  match - not fixed yet since Zillow saved search isn't set up yet and
+  we don't have a real sample to match against; revisit when doing Zillow.
+  StreetEasy saved-search alert is live; still waiting on a genuine new
+  listing email to confirm one real end-to-end match before trusting the
+  "let it run 1-2 days" step.
