@@ -44,7 +44,6 @@ notify:
   # public repo. For local runs, just edit these directly.
   recipients:
     - "echartock3@gmail.com"
-    - "mad.danoff@gmail.com"
   from_address: "echartock3@gmail.com"
   subject_prefix: "[Apt Alert]"
 
