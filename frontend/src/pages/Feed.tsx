@@ -41,10 +41,18 @@ export function Feed({ user }: { user: string }) {
   }, []);
 
   const onRate = async (id: number, rating: number) => {
+    // Optimistic: fill the stars in immediately, then reconcile with the
+    // server (which also recomputes sort position/leaderboard rank) -
+    // instant feedback on the click itself is what actually matters for
+    // "feels slick," the sort re-shuffling a beat later is fine.
+    setListings((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, ratings: { ...l.ratings, [user]: rating } } : l)),
+    );
     await api.setRating(id, rating);
     load();
   };
   const onHide = async (id: number, hidden: boolean) => {
+    setListings((prev) => (hidden ? prev.filter((l) => l.id !== id) : prev));
     await api.setHidden(id, hidden);
     load();
   };

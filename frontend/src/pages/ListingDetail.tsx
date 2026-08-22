@@ -21,6 +21,9 @@ export function ListingDetail({ user }: { user: string }) {
   }, [id]);
 
   const onRate = async (listingId: number, rating: number) => {
+    setListing((prev) =>
+      prev && prev.id === listingId ? { ...prev, ratings: { ...prev.ratings, [user]: rating } } : prev,
+    );
     await api.setRating(listingId, rating);
     load();
   };
