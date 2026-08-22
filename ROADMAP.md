@@ -1,65 +1,81 @@
 # ROADMAP.md
 
-## Phase 1 - Ingestion, filtering, alerting  [IN PROGRESS - confirming it works]
+High-level phases/features. For concrete next actions and who does
+them, see `STATUS.md`. For why each choice was made, see `DECISIONS.md`.
+
+## Phase 1 - Gmail alert ingestion  [DEPRIORITIZED - still running, not actively developed]
+
+Built, deployed, and confirmed working (with known gaps accepted) before
+the pivot below. Left running on GitHub Actions cron in case Zillow's
+alert cadence turns out to be worth revisiting later - not being built
+on further right now.
 
 - [x] Gmail ingestion of alert emails (StreetEasy/Zillow/RentHop/NakedApartments)
-- [x] Listing URL extraction + best-effort page parsing
+- [x] Email-snippet field extraction (page-fetch path abandoned - 403s)
 - [x] Hard filters: price, beds/baths, move-in window (Sep 1 - Oct 3)
-- [x] SQLite dedup by URL
-- [x] SQLite dedup by normalized address (cross-source)
-- [x] Email alerts via Gmail API
-- [x] GitHub Actions deployment, public repo, variable-frequency schedule
-- [x] listings.db persistence via commit-back-to-repo
-- [x] Failure alert email (`if: failure()` in workflow)
-- [x] Daily heartbeat email with basic stats
-- [x] Dry-run/test mode
-- [ ] **User confirms end-to-end it's working reliably in production** <- current blocker before Phase 2
-- [ ] (deferred) Delisting detection
-- [ ] (deferred) Weekly "close calls" digest for near-miss filtered listings
+- [x] SQLite dedup by URL + by normalized address (cross-source)
+- [x] Email alerts via Gmail API, GitHub Actions deployment, variable-frequency schedule
+- [x] Failure alert email + daily heartbeat + dry-run mode
+- [x] User confirmed end-to-end working (2026-08-20, with known gaps accepted)
+- [ ] (parked) Zillow/RentHop/NakedApartments saved searches never finished
+- [ ] (parked) Delisting detection, weekly "close calls" digest
 
-## Phase 2 - Taste/style scoring  [NOT STARTED - do not begin without user confirmation]
+## Shared web app pivot  [IN PROGRESS - started 2026-08-22]
 
-- [ ] Collect reference photos (liked + disliked apartments) from user
-- [ ] Claude-vision-derived written taste profile
-- [ ] Score each new listing's photos against the taste profile
-- [ ] Include score + one-line "why this one" reasoning in alert emails
-- [ ] Feedback loop: thumbs up/down on real alerts refines the profile over time
+**Supersedes the Phase 2 (taste-scored emails) and Phase 2.5 (texting
+agent) plans below** - real-world testing showed speed was never the
+actual problem; the user's problem is shared, persistent, asynchronous
+review by two people. See `DECISIONS.md` ("Pivot from email alerts to
+a shared web app") and `.claude/plans/well-i-realized-that-goofy-platypus.md`
+for the full reasoning.
 
-## Phase 2.5 - Interactive texting agent  [DESIGNED, NOT STARTED]
+- [x] Schema: per-user ratings/comments, shared hide flag, AI score
+      fields, open-house fields (extends the existing `ListingStore`,
+      shared with the email pipeline)
+- [x] `webapp/` - FastAPI + Jinja2 shared feed, rating/comment/hide,
+      open-houses view, hidden-listings review, lightweight identity -
+      built and tested locally end-to-end
+- [x] Browser-authenticated scan ingestion (bypasses the anti-scraping
+      wall that blocks anonymous requests) - formalized as a project
+      skill with a pacing fix for a real PerimeterX trip found while
+      building it
+- [x] AI taste-match scoring pipeline, wired in with graceful
+      degradation - **not yet tested against the real Claude API**
+- [ ] Reference photos -> written taste profile (`taste_profile.md`) -
+      **needs the user**
+- [ ] Verify AI scoring against the real API once a key is available -
+      **needs the user's `ANTHROPIC_API_KEY`**
+- [ ] Host it: Turso (db) + Fly.io (app) - **needs the user's accounts**
+- [ ] Dev tooling: ruff (format+lint), ty (types), poethepoet (task
+      runner), light `uv` adoption - done, see `CLAUDE.md` "Dev tooling"
 
-User wants to interact via text instead of (or alongside) email, with
-queries like "anything in Boerum Hill that looks like the Fort Greene
-one?" - this is a real scope increase, not a bolt-on: it requires an
-always-on/on-demand server (can't run on GitHub Actions cron) and
-absorbs Phase 2's taste-profile work as its data foundation. Designed
-as a deliberately simple v1 - see DECISIONS.md for why each
-simplification was chosen.
+## Phase 2 - Taste/style scoring in email alerts  [SUPERSEDED - see pivot above]
 
-- [ ] Twilio SMS number + webhook endpoint (serverless: Lambda/Fly.io/
-      Render, not a always-on VPS - traffic is a few texts/day)
-- [ ] Per-listing Claude-vision description generated at ingestion time,
-      for every listing *seen* (not just ones that pass hard filters) -
-      this is the data similarity queries run against
-- [ ] Shared single conversation thread (one phone number, both people
-      text it, one running history) + last-N-listings-referenced context
-- [ ] Similarity query handling: no vector DB/embeddings - at this
-      volume, hand Claude the target + candidate descriptions directly
-      and ask it to compare/rank in one call
-- [ ] Preference notes log: freeform texted preferences ("hate galley
-      kitchens") appended to a table, feeds the same taste-profile
-      prompt as Phase 2's reference photos
-- [ ] Single-call intent handling: one Claude call per incoming text,
-      given conversation history + recent listings as context, decides
-      whether to answer/log-preference/both and drafts the reply -
-      no separate classifier step
-- [ ] Depends on: Phase 2's taste-profile foundation should exist first
-      (per sequencing decision - see DECISIONS.md)
+Original plan: score each new listing's photos against a taste profile
+and include it in the alert email. The AI-scoring *mechanism* was kept
+and reused in the pivot above, but the *delivery* (email) was replaced
+by the shared web app's feed. Left here as historical record, not a
+pending plan - don't build an email-delivered version of this.
 
-## Phase 3 - Nice-to-haves  [NOT STARTED]
+## Phase 2.5 - Interactive texting agent  [SUPERSEDED - see pivot above]
+
+Original plan: a Twilio-based SMS agent for conversational queries
+("anything in Boerum Hill that looks like the Fort Greene one?"). The
+user chose a web app over a texting interface instead. Full original
+design reasoning kept in `DECISIONS.md` as historical record (in case
+a chat/NL interface gets revisited later - the user explicitly declined
+building one into the web app "for now," not permanently) - don't build
+this as designed here.
+
+## Phase 3 - Nice-to-haves  [NOT STARTED - may end up as webapp features instead]
+
+These predate the pivot and were scoped for the email pipeline. Worth
+re-evaluating each as a webapp feature (e.g. a button/field on the
+shared feed) rather than an email addition, if picked back up.
 
 - [ ] Auto-drafted inquiry message ("still available? can we see it Thurs?")
 - [ ] Days-on-market tracking as a negotiation-leverage signal
-- [ ] Delisting detection (moved here from deferred Phase 1 list)
-- [ ] Weekly close-calls digest (moved here from deferred Phase 1 list)
+- [ ] Delisting detection
+- [ ] Weekly close-calls digest (or: a webapp view of near-misses)
 - [ ] Commute-time enrichment via Maps API
 - [ ] Rent-stabilization lookup against NYC public data

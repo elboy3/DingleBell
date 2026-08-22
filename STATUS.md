@@ -21,7 +21,7 @@ not just a static checklist.
 
 ---
 
-## Phase 1 - Ingestion, filtering, alerting
+## Phase 1 - Ingestion, filtering, alerting  [DEPRIORITIZED - still running, see pivot below]
 
 ### Build (done, via Claude sessions)
 - [x] [CLAUDE] Scaffold repo structure and all core modules
@@ -90,6 +90,13 @@ Built and verified locally (all via Claude sessions):
       wired into `browser_import.py`, graceful no-op when no taste profile
       / API key is configured - **not yet tested against the real Claude
       API**, since no `ANTHROPIC_API_KEY` is available in this environment
+- [x] [CLAUDE] Dev tooling: `ruff` (format + lint), `ty` (Astral's type
+      checker), `poethepoet` (task runner - `poe check`/`fmt`/`lint`/
+      `typecheck`/`run`/`rescore`/`install`), light `uv` adoption for
+      local env/installs (`requirements.txt` stays the source of truth,
+      GitHub Actions untouched). Fixed a real bug `uv`'s stricter
+      resolver caught: `requirements.txt` had invented version pins for
+      several deps, not what was actually installed/tested.
 
 Needs you (all [MANUAL] - real accounts/credentials/content only you can provide):
 - [ ] [MANUAL] Send reference photos (liked + disliked) so a taste profile

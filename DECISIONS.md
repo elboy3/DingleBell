@@ -194,3 +194,30 @@ can't run on the old GitHub Actions cron - formalized instead as a
 project skill (`.claude/skills/scan-streeteasy/SKILL.md`) run whenever
 someone asks, which is the correct cadence now that speed isn't the
 goal.
+
+### Added ruff/ty/poethepoet, light uv adoption
+User asked for formatting/linting and Astral's type checker (`ty`,
+their newer mypy equivalent) on top of the growing `webapp/` codebase.
+Added `ruff` (format + a simple `E`/`F`/`I`/`UP`/`B` lint ruleset) and
+`ty` (no special config needed), both configured in a new
+`pyproject.toml`. Added `poethepoet` as the task runner rather than a
+plain `Makefile` - tasks live in `pyproject.toml` (already exists for
+ruff/ty config) rather than a separate file, and it's genuinely
+Python-native rather than a general-purpose tool bolted on.
+
+Every `ruff check` finding was fixed by hand, not suppressed - 2
+genuinely unused imports/variables, ambiguous single-letter `l` loop
+variables renamed to `listing` across the webapp routes, two overlong
+lines wrapped/split. `ty` caught one real type mismatch:
+`ListingStore.set_ai_score` declared `reasoning: str` but
+`score_listing()` can return `str | None` - loosened the signature to
+match, since `ai_reasoning` is a nullable column anyway.
+
+Separately adopted `uv` for local env/installs (light adoption only -
+`requirements.txt`/`requirements-dev.txt` stay the source of truth,
+GitHub Actions and the planned Fly.io Dockerfile stay on plain `pip`,
+not touched). `uv`'s stricter dependency resolver immediately caught a
+real bug: `requirements.txt` had invented, never-verified version pins
+for `anthropic`/`fastapi`/`uvicorn`/`jinja2`/`python-multipart` (e.g.
+`anthropic==0.40.0` when `1.0.0` - a major version - was what was
+actually installed and tested against). Re-pinned to match reality.

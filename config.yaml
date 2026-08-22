@@ -11,8 +11,10 @@ search:
   beds_min: 1
   baths_min: 1
 
-  # Cast a WIDER net than your manual search - Claude-side taste
-  # filtering (Phase 2) will do the fine sorting later.
+  # Cast a WIDER net than your manual search - this is a filter for the
+  # email pipeline only, not the shared web app's saved-search scan
+  # (which uses whatever StreetEasy search is currently open). AI
+  # taste-match scoring (see scoring: below) does the fine sorting.
   neighborhoods:
     - "Brooklyn Heights"
     - "Cobble Hill"
