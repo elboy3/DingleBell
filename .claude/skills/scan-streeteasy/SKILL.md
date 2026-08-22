@@ -17,6 +17,13 @@ page loads tripped PerimeterX on page 2 during this feature's initial build,
 even with a real authenticated session - a single organic load did not. The
 pacing and page cap below exist specifically to avoid re-triggering that.
 
+**If you ever need a specific listing's full photo set** (not just the
+search-results card thumbnail this skill's step 7 screenshots) - e.g. to
+open an individual listing page - don't try clicking through its photo
+lightbox; it wasn't reliably clickable via CDP in testing (see DECISIONS.md
+"Photo galleries: extract image URLs directly"). Extract image URLs from the
+DOM instead and view them via download + `Read`.
+
 ## Procedure
 
 1. If the `browser-use` MCP plugin's tools aren't loaded yet, `ToolSearch`

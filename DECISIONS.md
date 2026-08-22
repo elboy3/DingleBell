@@ -239,3 +239,28 @@ fallback only, for listings that don't already carry a score - not
 required, not the primary path. This removes an entire external
 credential from the critical path for something that only ever needed
 to happen during an already-interactive Claude session anyway.
+
+### Photo galleries: extract image URLs directly, don't fight the lightbox UI
+While building `taste_profile.md` from real StreetEasy listing pages,
+clicking through the photo lightbox (next-arrow, thumbnails) via
+`click_at_xy()` never advanced the photo - tried correcting for
+viewport/screenshot coordinate scaling, activating the tab, keyboard
+arrow-key events, none worked. Root cause unclear (screenshot-based
+click dispatch may not reliably trigger the lightbox's own event
+handlers).
+
+Rather than keep debugging UI interaction, extracted photo URLs
+directly from the DOM (`document.querySelectorAll('img')`, filtered to
+`zillowstatic` CDN URLs, deduped) and downloaded each with `curl` into
+the scratchpad, then viewed them with the `Read` tool - `.webp` works
+directly, no conversion needed. More reliable than UI navigation
+anyway: one pass gets every photo already loaded into the DOM, not
+just whichever one the lightbox happens to be showing. Photos don't
+all render in the DOM until the page settles or you scroll - if fewer
+URLs come back than the page's own "X of N" count, scroll through the
+page first and re-run the extraction.
+
+Same underlying technique the scan-streeteasy skill's scoring step
+already uses (screenshotting a page rather than clicking into
+anything) - reuse this directly if a future session needs a specific
+listing's full photo set, not just its search-results thumbnail.
