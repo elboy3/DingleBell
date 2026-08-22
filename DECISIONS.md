@@ -150,3 +150,47 @@ guess causing a false-positive address-dedup collision is worse than
 no address). Net effect: weaker cross-source dedup on listings with no
 extractable address, stronger overall reliability - acceptable given
 goal #1 (breadth of discovery) outweighs a possible duplicate alert.
+
+### Pivot from email alerts to a shared web app, deprioritizing speed
+Real-world testing (2026-08-20/22) showed StreetEasy doesn't actually
+send real-time per-listing alerts - only a few thin "recommendations"
+digests a day, missing photos and full detail. The user's actual
+problem turned out not to be speed at all: it's not re-evaluating the
+same apartments repeatedly, not holding rankings in their heads, and
+letting two people react asynchronously with a persisted, shared
+result. Pivoted to a small web app (`webapp/`) on top of the existing
+`apt_agent/store.py` persistence layer: shared feed, per-user 1-5
+star ratings + comments, a shared (not per-user) hide/unhide flag, an
+AI taste-match score computed automatically at ingest time, and a
+deterministic open-house view - no in-app LLM/chat interface, since
+that was explicitly declined for now. The existing Gmail/cron pipeline
+is left running as-is, deprioritized rather than removed, in case
+Zillow's alert cadence turns out to be genuinely better later. Full
+design: `.claude/plans/well-i-realized-that-goofy-platypus.md`.
+
+### Browser-authenticated scan replaces anonymous scraping for full census
+Using the `browser-use` MCP plugin to drive the user's real, already
+logged-in Brave/Chrome session, StreetEasy's saved-search RESULTS page
+loads successfully - the PerimeterX wall that blocks anonymous
+scraping doesn't trigger against a genuine authenticated session. This
+gives real structured data (address, neighborhood, price, beds/baths,
+sqft, a real CDN-hosted photo, open-house timing) with far more detail
+than any alert email ever had, without violating the original
+scraping-avoidance reasoning above - this isn't defeating a bot
+defense, it's a real user's own browser loading a page they're
+entitled to see.
+
+Real constraint found while building this: a tight loop of 13 rapid
+sequential page-to-page navigations tripped PerimeterX on page 2, even
+with the authenticated session - a single organic page load did not.
+Mitigated with a deliberate pace between navigations
+(`PAGE_PACING_SECONDS = 20`) and a per-session page cap
+(`MAX_PAGES_PER_SESSION = 5`) in `apt_agent/browser_scan_helpers.py` -
+resuming a scan across multiple sessions is safe regardless, since
+`ListingStore.already_seen()` skips anything already imported.
+
+This only works interactively (it drives a live local browser), so it
+can't run on the old GitHub Actions cron - formalized instead as a
+project skill (`.claude/skills/scan-streeteasy/SKILL.md`) run whenever
+someone asks, which is the correct cadence now that speed isn't the
+goal.

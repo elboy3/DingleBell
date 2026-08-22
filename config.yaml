@@ -55,3 +55,12 @@ notify:
 
 storage:
   db_path: "listings.db"
+
+scoring:
+  # AI taste-match scoring for the shared web app (see webapp/scoring.py).
+  # Both the file and ANTHROPIC_API_KEY env var must be present for
+  # scoring to run at all - otherwise browser_import.py just skips it
+  # (ingestion never blocks on scoring being unset up). profile_path
+  # doesn't need to exist yet.
+  profile_path: "taste_profile.md"
+  profile_version: "unset"   # bump manually whenever taste_profile.md's content meaningfully changes
