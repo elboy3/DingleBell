@@ -18,16 +18,26 @@
 {% endmacro %}
 
 <div class="listing-card">
-  {% if listing.photo_url %}
-    <img class="listing-photo" src="{{ listing.photo_url }}" alt="">
-  {% endif %}
+  <div class="listing-photo-wrap">
+    {% if listing.photo_url %}
+      <img class="listing-photo" src="{{ listing.photo_url }}" alt="">
+    {% else %}
+      <div class="listing-photo-placeholder">No photo yet - run a scan to get one</div>
+    {% endif %}
+    {% if listing.price %}<div class="price-badge">${{ "{:,}".format(listing.price) }}/mo</div>{% endif %}
+    {% if listing.ai_score is not none %}
+      {% set score10 = (listing.ai_score / 10) | round(1) %}
+      <div class="score-badge {{ 'score-high' if listing.ai_score >= 70 else ('score-mid' if listing.ai_score >= 40 else 'score-low') }}">
+        {{ score10 }}/10 match
+      </div>
+    {% endif %}
+  </div>
   <div class="listing-body">
     <div class="listing-header">
       <a href="/listings/{{ listing.id }}" class="listing-address">{{ listing.address or listing.url }}</a>
       {% if listing.neighborhood %}<span class="neighborhood">{{ listing.neighborhood }}</span>{% endif %}
     </div>
     <div class="listing-facts">
-      {% if listing.price %}<span>${{ "{:,}".format(listing.price) }}</span>{% endif %}
       {% if listing.beds is not none %}<span>{{ listing.beds }} bed</span>{% endif %}
       {% if listing.baths is not none %}<span>{{ listing.baths }} bath</span>{% endif %}
       {% if listing.sqft %}<span>{{ listing.sqft }} ft²</span>{% endif %}
@@ -35,11 +45,13 @@
     {% if listing.open_house_raw %}
       <div class="open-house">{{ listing.open_house_raw }}</div>
     {% endif %}
-    {% if listing.ai_score is not none %}
-      <div class="ai-score">AI match: <strong>{{ (listing.ai_score / 10) | round(1) }}/10</strong>
-        {% if listing.ai_reasoning %}<span class="ai-reasoning">{{ listing.ai_reasoning }}</span>{% endif %}
-      </div>
-    {% endif %}
+    {% if listing.ai_reasoning %}<span class="ai-reasoning">{{ listing.ai_reasoning }}</span>{% endif %}
+
+    {% for u, r in (listing.reactions or {}).items() %}
+      {% if r.comment %}
+        <div class="comment-preview"><strong>{{ u | capitalize }}:</strong> {{ r.comment }}</div>
+      {% endif %}
+    {% endfor %}
 
     <div class="ratings">
       <div class="rating-row">Elliott {{ stars(listing.id, user, "elliott", listing.ratings.elliott) }}</div>
@@ -48,7 +60,7 @@
     </div>
 
     <div class="card-actions">
-      <a href="/listings/{{ listing.id }}">Details / comment</a>
+      <a href="/listings/{{ listing.id }}">Details / comment →</a>
       <form method="post" action="/listings/{{ listing.id }}/hidden" class="inline-form">
         <input type="hidden" name="hidden" value="{{ 'false' if listing.hidden else 'true' }}">
         <button type="submit">{{ 'Unhide' if listing.hidden else "Not interested" }}</button>

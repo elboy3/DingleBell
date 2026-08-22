@@ -1,6 +1,17 @@
 {% extends "base.html" %}
 {% block content %}
+  <a href="/" class="back-link">&larr; Back to feed</a>
+
   {% include "_listing_card.html" %}
+
+  {% if listing.address %}
+    <div class="map-embed">
+      <iframe
+        width="100%" height="260" style="border:0" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+        src="https://maps.google.com/maps?q={{ (listing.address + ', ' + (listing.neighborhood or '') + ' Brooklyn, NY') | urlencode }}&output=embed">
+      </iframe>
+    </div>
+  {% endif %}
 
   <h3>Comments</h3>
   {% for u, r in listing.reactions.items() %}
@@ -14,5 +25,5 @@
     <button type="submit">Save comment</button>
   </form>
 
-  <p><a href="{{ listing.url }}" target="_blank" rel="noopener">View original listing &rarr;</a></p>
+  <a href="{{ listing.url }}" target="_blank" rel="noopener" class="original-link">View original listing &rarr;</a>
 {% endblock %}
