@@ -1,5 +1,5 @@
 """Hard filters: price, beds/baths, move-in window."""
-from datetime import datetime
+
 from dateutil import parser as dateparser
 
 
@@ -10,7 +10,10 @@ def passes_filters(listing: dict, cfg: dict) -> tuple[bool, str]:
     price = listing.get("price")
     if price is not None:
         if price < search_cfg["price_min"] or price > search_cfg["price_max"]:
-            return False, f"price {price} outside [{search_cfg['price_min']}, {search_cfg['price_max']}]"
+            return (
+                False,
+                f"price {price} outside [{search_cfg['price_min']}, {search_cfg['price_max']}]",
+            )
 
     beds = listing.get("beds")
     if beds is not None and beds < search_cfg["beds_min"]:

@@ -8,6 +8,7 @@ Every failure mode (no photo, fetch failure, API error, unparseable
 response) returns (None, None) and never raises - ingestion must never
 block on scoring. Matches filters.py's existing "unknown field, don't
 block on it" pattern."""
+
 import base64
 import json
 import re
@@ -17,15 +18,19 @@ import requests
 
 MODEL = "claude-opus-5"
 
-_PROMPT_TEMPLATE = """You are helping evaluate an apartment listing photo against a couple's stated taste profile.
+_PROMPT_TEMPLATE = """You are helping evaluate an apartment listing photo against a \
+couple's stated taste profile.
 
 Taste profile:
 {taste_profile}
 
-Judge ONLY the space shown in the photo - its style, finishes, layout, light. Ignore photography/staging quality: a great apartment shot badly should not score low, and a mediocre apartment staged well should not score high.
+Judge ONLY the space shown in the photo - its style, finishes, layout, light. Ignore \
+photography/staging quality: a great apartment shot badly should not score low, and a \
+mediocre apartment staged well should not score high.
 
 Respond with ONLY a JSON object, no other text, in exactly this shape:
-{{"score": <integer 0-100, how well this matches the taste profile>, "reasoning": "<one short sentence citing the specific visual cue that drove the score>"}}"""
+{{"score": <integer 0-100, how well this matches the taste profile>, \
+"reasoning": "<one short sentence citing the specific visual cue that drove the score>"}}"""
 
 
 def _extract_json(text: str) -> dict | None:
@@ -64,13 +69,25 @@ def score_listing(listing: dict, taste_profile: str, api_key: str) -> tuple[int 
             model=MODEL,
             max_tokens=256,
             output_config={"effort": "low"},
-            messages=[{
-                "role": "user",
-                "content": [
-                    {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": image_data}},
-                    {"type": "text", "text": _PROMPT_TEMPLATE.format(taste_profile=taste_profile)},
-                ],
-            }],
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": media_type,
+                                "data": image_data,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": _PROMPT_TEMPLATE.format(taste_profile=taste_profile),
+                        },
+                    ],
+                }
+            ],
         )
     except (anthropic.APIError, anthropic.APIConnectionError):
         return None, None

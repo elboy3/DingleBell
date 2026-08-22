@@ -1,5 +1,6 @@
 """Per-listing detail + the actions that mutate state: rating, comment,
 and the shared hide toggle."""
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 
@@ -16,8 +17,8 @@ def listing_detail(request: Request, listing_id: int):
         return RedirectResponse("/whoami")
 
     store = get_store()
-    listings = {l["id"]: l for l in store.all_listings(include_hidden=True)}
-    listing = listings.get(listing_id)
+    listings_by_id = {row["id"]: row for row in store.all_listings(include_hidden=True)}
+    listing = listings_by_id.get(listing_id)
     if listing is None:
         return RedirectResponse("/")
 

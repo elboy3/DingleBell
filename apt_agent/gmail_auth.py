@@ -21,7 +21,9 @@ Scopes requested:
   - gmail.modify    (needed to clear the UNREAD label off processed alert
                       emails so they aren't reprocessed on the next poll)
 """
+
 import os
+
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow

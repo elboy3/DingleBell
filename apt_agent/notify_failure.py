@@ -3,10 +3,12 @@ Run this only when the main polling step fails (wired into the GitHub
 Actions workflow via `if: failure()`). Sends a plain "the agent broke"
 email so a bad run doesn't just go silent for days.
 """
+
+import base64
 import os
 import sys
-import base64
 from email.mime.text import MIMEText
+
 from googleapiclient.discovery import build
 
 from .gmail_auth import get_gmail_credentials
@@ -19,7 +21,10 @@ def main():
 
     recipients = [r.strip() for r in recipients_env.split(",") if r.strip()]
     if not recipients or not from_address:
-        print("NOTIFY_RECIPIENTS / NOTIFY_FROM_ADDRESS not set, skipping failure email.", file=sys.stderr)
+        print(
+            "NOTIFY_RECIPIENTS / NOTIFY_FROM_ADDRESS not set, skipping failure email.",
+            file=sys.stderr,
+        )
         return
 
     creds = get_gmail_credentials()

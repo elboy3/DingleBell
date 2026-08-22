@@ -16,7 +16,7 @@ def compute_rating_summary(reactions: dict) -> dict:
         both_rating = min(rated.values())
         label = None
     elif len(rated) == 1:
-        (only_user, only_rating), = rated.items()
+        ((only_user, only_rating),) = rated.items()
         both_rating = only_rating
         label = f"only {only_user.capitalize()} has rated"
     else:

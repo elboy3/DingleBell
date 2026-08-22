@@ -1,6 +1,7 @@
 """The main shared feed: sortable by AI score or by our own ratings, with
 a non-destructive threshold filter. Hidden listings never appear here -
 see routes/hidden.py for reviewing/undoing those."""
+
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 
@@ -24,13 +25,17 @@ def feed(request: Request, sort: str = "ai", min_score: int | None = None):
         return RedirectResponse("/whoami")
 
     store = get_store()
-    listings = [_enrich(l, store) for l in store.all_listings(include_hidden=False)]
+    listings = [_enrich(listing, store) for listing in store.all_listings(include_hidden=False)]
 
     sort_key = "ai_score" if sort == "ai" else "both_rating"
-    listings.sort(key=lambda l: (l[sort_key] is None, -(l[sort_key] or 0)))
+    listings.sort(key=lambda listing: (listing[sort_key] is None, -(listing[sort_key] or 0)))
 
     if min_score is not None:
-        listings = [l for l in listings if l[sort_key] is not None and l[sort_key] >= min_score]
+        listings = [
+            listing
+            for listing in listings
+            if listing[sort_key] is not None and listing[sort_key] >= min_score
+        ]
 
     return templates.TemplateResponse(
         request,

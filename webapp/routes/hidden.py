@@ -1,5 +1,6 @@
 """Review + undo shared hides. Hiding is deliberate and joint, but never
 permanent - this page is the escape hatch."""
+
 from fastapi import APIRouter, Request
 from fastapi.responses import RedirectResponse
 
@@ -16,10 +17,10 @@ def hidden_listings(request: Request):
         return RedirectResponse("/whoami")
 
     store = get_store()
-    listings = [l for l in store.all_listings(include_hidden=True) if l["hidden"]]
-    for l in listings:
-        reactions = store.get_reactions_for_listing(l["id"])
-        l["reactions"] = reactions
-        l.update(compute_rating_summary(reactions))
+    listings = [listing for listing in store.all_listings(include_hidden=True) if listing["hidden"]]
+    for listing in listings:
+        reactions = store.get_reactions_for_listing(listing["id"])
+        listing["reactions"] = reactions
+        listing.update(compute_rating_summary(reactions))
 
     return templates.TemplateResponse(request, "hidden.html", {"listings": listings, "user": user})

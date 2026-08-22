@@ -2,6 +2,7 @@
 current-user resolution from an unsigned cookie, and the Jinja2 templates
 environment. No passwords/signed sessions - see plan doc for why that's
 the right call for exactly 2 known users."""
+
 from pathlib import Path
 
 from fastapi import Request

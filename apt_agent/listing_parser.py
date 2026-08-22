@@ -14,7 +14,9 @@ Selectors below are best-effort based on common patterns and WILL need
 adjustment once you see real page HTML - treat this as a starting point,
 not a finished scraper.
 """
+
 import re
+
 import requests
 from bs4 import BeautifulSoup
 

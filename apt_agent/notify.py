@@ -1,17 +1,21 @@
 """Send alert emails via the Gmail API (reuses the same OAuth creds as ingestion)."""
+
 import base64
 from email.mime.text import MIMEText
+
 from googleapiclient.discovery import build
 
 from .gmail_auth import get_gmail_credentials
 
 
-def _build_message(listing: dict, recipients: list[str], from_address: str, subject_prefix: str) -> dict:
+def _build_message(
+    listing: dict, recipients: list[str], from_address: str, subject_prefix: str
+) -> dict:
     source = listing.get("source", "unknown")
 
     if source == "heartbeat":
         subject = f"{subject_prefix} Daily check-in - agent is alive"
-        body = f"""{listing['address']}
+        body = f"""{listing["address"]}
 
 This is an automatic daily heartbeat, not a real listing - just
 confirming the agent ran successfully in the last 24h. If you stop
@@ -22,7 +26,7 @@ Sent automatically by your apartment agent.
 """
     elif source == "dry-run":
         subject = f"{subject_prefix} TEST alert - pipeline check"
-        body = f"""This is a test email, not a real listing.
+        body = """This is a test email, not a real listing.
 
 If you're reading this, OAuth + filters + email delivery are all
 working end-to-end. Nothing to act on here.
@@ -44,7 +48,7 @@ Beds / Baths: {beds} / {baths}
 Available: {avail}
 Source: {source}
 
-Link: {listing['url']}
+Link: {listing["url"]}
 
 ---
 Sent automatically by your apartment agent.

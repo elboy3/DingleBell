@@ -5,6 +5,7 @@ command is enough at this scale - not worth automating.
 
     python -m webapp.rescore
 """
+
 import os
 
 from apt_agent.store import ListingStore
@@ -33,7 +34,8 @@ def main():
     store = ListingStore(cfg["storage"]["db_path"])
 
     stale = [
-        listing for listing in store.all_listings(include_hidden=True)
+        listing
+        for listing in store.all_listings(include_hidden=True)
         if listing["ai_score"] is None or listing["ai_profile_version"] != profile_version
     ]
     print(f"{len(stale)} listing(s) need (re)scoring against profile version {profile_version!r}")

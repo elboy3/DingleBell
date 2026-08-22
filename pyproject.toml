@@ -1,0 +1,10 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+# Default-ish, simple ruleset - pyflakes + pycodestyle errors, import
+# sorting, and a couple of easy correctness checks. Not aiming for a
+# strict/opinionated lint setup here.
+select = ["E", "F", "I", "UP", "B"]
+

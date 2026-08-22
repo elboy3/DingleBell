@@ -8,11 +8,11 @@ Handles two layers of dedup:
      multiple sites - StreetEasy + Zillow + RentHop often all carry the
      same listing with different URLs)
 """
+
 import re
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime, timezone, timedelta
-
+from datetime import UTC, datetime, timedelta
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS listings (
@@ -165,7 +165,7 @@ class ListingStore:
                     listing.get("baths"),
                     listing.get("available_date"),
                     listing.get("source"),
-                    datetime.now(timezone.utc).isoformat(),
+                    datetime.now(UTC).isoformat(),
                     1 if alerted else 0,
                     listing.get("neighborhood"),
                     listing.get("sqft"),
@@ -177,7 +177,9 @@ class ListingStore:
             )
             if cursor.lastrowid and cursor.rowcount:
                 return cursor.lastrowid
-            row = conn.execute("SELECT id FROM listings WHERE url = ?", (listing["url"],)).fetchone()
+            row = conn.execute(
+                "SELECT id FROM listings WHERE url = ?", (listing["url"],)
+            ).fetchone()
             return row[0]
 
     def set_rating(self, listing_id: int, user: str, rating: int) -> None:
@@ -186,8 +188,14 @@ class ListingStore:
                 """INSERT INTO listing_reactions (listing_id, user, rating, updated_at)
                    VALUES (?, ?, ?, ?)
                    ON CONFLICT(listing_id, user) DO UPDATE SET rating = ?, updated_at = ?""",
-                (listing_id, user, rating, datetime.now(timezone.utc).isoformat(),
-                 rating, datetime.now(timezone.utc).isoformat()),
+                (
+                    listing_id,
+                    user,
+                    rating,
+                    datetime.now(UTC).isoformat(),
+                    rating,
+                    datetime.now(UTC).isoformat(),
+                ),
             )
 
     def set_comment(self, listing_id: int, user: str, comment: str) -> None:
@@ -196,8 +204,14 @@ class ListingStore:
                 """INSERT INTO listing_reactions (listing_id, user, comment, updated_at)
                    VALUES (?, ?, ?, ?)
                    ON CONFLICT(listing_id, user) DO UPDATE SET comment = ?, updated_at = ?""",
-                (listing_id, user, comment, datetime.now(timezone.utc).isoformat(),
-                 comment, datetime.now(timezone.utc).isoformat()),
+                (
+                    listing_id,
+                    user,
+                    comment,
+                    datetime.now(UTC).isoformat(),
+                    comment,
+                    datetime.now(UTC).isoformat(),
+                ),
             )
 
     def set_hidden(self, listing_id: int, hidden: bool, by: str) -> None:
@@ -206,14 +220,19 @@ class ListingStore:
         with self._conn() as conn:
             conn.execute(
                 "UPDATE listings SET hidden = ?, hidden_by = ?, hidden_at = ? WHERE id = ?",
-                (1 if hidden else 0, by if hidden else None,
-                 datetime.now(timezone.utc).isoformat() if hidden else None, listing_id),
+                (
+                    1 if hidden else 0,
+                    by if hidden else None,
+                    datetime.now(UTC).isoformat() if hidden else None,
+                    listing_id,
+                ),
             )
 
     def get_reactions_for_listing(self, listing_id: int) -> dict[str, dict]:
         with self._conn() as conn:
             rows = conn.execute(
-                "SELECT user, rating, comment, updated_at FROM listing_reactions WHERE listing_id = ?",
+                """SELECT user, rating, comment, updated_at
+                   FROM listing_reactions WHERE listing_id = ?""",
                 (listing_id,),
             ).fetchall()
         return {
@@ -231,12 +250,20 @@ class ListingStore:
             rows = conn.execute(query).fetchall()
         return [dict(row) for row in rows]
 
-    def set_ai_score(self, listing_id: int, score: int, reasoning: str, profile_version: str) -> None:
+    def set_ai_score(
+        self, listing_id: int, score: int, reasoning: str | None, profile_version: str
+    ) -> None:
         with self._conn() as conn:
             conn.execute(
                 """UPDATE listings SET ai_score = ?, ai_reasoning = ?,
                    ai_scored_at = ?, ai_profile_version = ? WHERE id = ?""",
-                (score, reasoning, datetime.now(timezone.utc).isoformat(), profile_version, listing_id),
+                (
+                    score,
+                    reasoning,
+                    datetime.now(UTC).isoformat(),
+                    profile_version,
+                    listing_id,
+                ),
             )
 
     def stats_since(self, since: datetime) -> dict:
@@ -253,4 +280,4 @@ class ListingStore:
         return {"seen": seen, "alerted": alerted}
 
     def stats_last_24h(self) -> dict:
-        return self.stats_since(datetime.now(timezone.utc) - timedelta(hours=24))
+        return self.stats_since(datetime.now(UTC) - timedelta(hours=24))

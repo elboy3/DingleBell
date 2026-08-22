@@ -1,4 +1,5 @@
 """Lightweight "who's using this" picker - no passwords, just a cookie."""
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import RedirectResponse
 

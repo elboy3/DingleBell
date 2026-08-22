@@ -1,5 +1,6 @@
 """Deterministic answer to "what open houses are coming up for our
 favorite places" - a real filtered/sorted view, not a chat query."""
+
 from datetime import date
 
 from fastapi import APIRouter, Request
@@ -22,17 +23,19 @@ def open_houses(request: Request, favorites_only: bool = False):
     store = get_store()
     today = date.today().isoformat()
     listings = []
-    for l in store.all_listings(include_hidden=False):
-        if not l["open_house_date"] or l["open_house_date"] < today:
+    for listing in store.all_listings(include_hidden=False):
+        if not listing["open_house_date"] or listing["open_house_date"] < today:
             continue
-        reactions = store.get_reactions_for_listing(l["id"])
-        l["reactions"] = reactions
-        l.update(compute_rating_summary(reactions))
-        if favorites_only and (l["both_rating"] is None or l["both_rating"] < FAVORITE_THRESHOLD):
+        reactions = store.get_reactions_for_listing(listing["id"])
+        listing["reactions"] = reactions
+        listing.update(compute_rating_summary(reactions))
+        if favorites_only and (
+            listing["both_rating"] is None or listing["both_rating"] < FAVORITE_THRESHOLD
+        ):
             continue
-        listings.append(l)
+        listings.append(listing)
 
-    listings.sort(key=lambda l: l["open_house_date"])
+    listings.sort(key=lambda listing: listing["open_house_date"])
 
     return templates.TemplateResponse(
         request,

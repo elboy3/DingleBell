@@ -16,15 +16,17 @@ Flow per run:
   5. Skip if we've already alerted on this address from a different site
   6. Save to DB, send email alert on every listing that passes
 """
+
 import argparse
 import os
+
 import yaml
 
+from .filters import passes_filters
 from .gmail_ingest import fetch_new_alert_urls
 from .listing_parser import extract_from_email_snippet
-from .filters import passes_filters
-from .store import ListingStore
 from .notify import send_alert
+from .store import ListingStore
 
 DRY_RUN_LISTING = {
     "url": "https://example.com/dry-run-test-listing",
@@ -47,7 +49,7 @@ def load_config(path: str = "config.yaml") -> dict:
       NOTIFY_RECIPIENTS   comma-separated list, e.g. "a@x.com,b@x.com"
       NOTIFY_FROM_ADDRESS single address
     """
-    with open(path, "r") as f:
+    with open(path) as f:
         cfg = yaml.safe_load(f)
 
     env_recipients = os.environ.get("NOTIFY_RECIPIENTS")
@@ -102,7 +104,7 @@ def run_dry_run(cfg: dict) -> int:
     """Pushes one obviously-fake listing through filters + alert email,
     bypassing Gmail entirely. Use this to confirm OAuth, filters, and
     email delivery all work before waiting on a real alert."""
-    store = ListingStore(cfg["storage"]["db_path"])
+    ListingStore(cfg["storage"]["db_path"])  # side effect only: ensure schema exists
     # dry run always alerts regardless of filters, so you actually see
     # the test email land in your inbox
     send_alert(DRY_RUN_LISTING, cfg["notify"])

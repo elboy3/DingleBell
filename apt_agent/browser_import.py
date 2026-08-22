@@ -25,12 +25,13 @@ imported listing also gets an AI taste-match score (see webapp/scoring.py)
 leaves scoring off (score_fn=None) otherwise, so ingestion works
 identically whether or not scoring is set up yet.
 """
+
 import json
 import os
 import sys
 
-from .main import load_config
 from .filters import passes_filters
+from .main import load_config
 from .store import ListingStore
 
 

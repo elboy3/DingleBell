@@ -8,9 +8,10 @@ Run once/day via a separate scheduled workflow (see
 
     python -m apt_agent.heartbeat
 """
+
 from .main import load_config
-from .store import ListingStore
 from .notify import send_alert
+from .store import ListingStore
 
 
 def build_heartbeat_listing(stats: dict) -> dict:

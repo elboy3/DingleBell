@@ -5,9 +5,9 @@ what's really true on disk/in config - not what you remember doing.
 
     python -m apt_agent.check_setup
 """
+
 import importlib
 import os
-import sys
 
 import yaml
 
@@ -45,13 +45,19 @@ def check_packages() -> bool:
         except ImportError:
             missing.append(pkg)
             all_ok = False
-    detail = "all present" if all_ok else f"missing: {', '.join(missing)} (run: pip install -r requirements.txt)"
+    detail = (
+        "all present"
+        if all_ok
+        else f"missing: {', '.join(missing)} (run: pip install -r requirements.txt)"
+    )
     return check("Python dependencies installed", all_ok, detail)
 
 
 def check_credentials_file() -> bool:
     exists = os.path.exists("credentials.json")
-    detail = "" if exists else "run through Google Cloud OAuth setup, save file here (see README step 1)"
+    detail = (
+        "" if exists else "run through Google Cloud OAuth setup, save file here (see README step 1)"
+    )
     return check("credentials.json present", exists, detail)
 
 
@@ -76,8 +82,7 @@ def check_config() -> tuple[bool, bool]:
     from_address = cfg.get("notify", {}).get("from_address", "")
 
     still_placeholder = (
-        any(r in PLACEHOLDER_VALUES for r in recipients)
-        or from_address in PLACEHOLDER_VALUES
+        any(r in PLACEHOLDER_VALUES for r in recipients) or from_address in PLACEHOLDER_VALUES
     )
     customized = check(
         "config.yaml notify section customized (not placeholder emails)",
@@ -104,18 +109,25 @@ def check_listings_db() -> bool:
 
 def check_git_remote() -> bool:
     if not os.path.exists(".git"):
-        check("git repo initialized", False, "run: git init && git remote add origin <your-repo-url>")
+        check(
+            "git repo initialized", False, "run: git init && git remote add origin <your-repo-url>"
+        )
         return False
     check("git repo initialized", True)
 
     import subprocess
+
     try:
         result = subprocess.run(
             ["git", "remote", "get-url", "origin"],
-            capture_output=True, text=True, timeout=5,
+            capture_output=True,
+            text=True,
+            timeout=5,
         )
         has_remote = result.returncode == 0 and result.stdout.strip()
-        detail = result.stdout.strip() if has_remote else "run: git remote add origin <your-repo-url>"
+        detail = (
+            result.stdout.strip() if has_remote else "run: git remote add origin <your-repo-url>"
+        )
         return check("git remote configured", bool(has_remote), detail)
     except (subprocess.SubprocessError, FileNotFoundError):
         return check("git remote configured", False, "couldn't check - is git installed?")

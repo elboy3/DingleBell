@@ -1,8 +1,10 @@
 """Poll Gmail for new listing-alert emails and extract listing URLs."""
+
 import base64
 import re
-from googleapiclient.discovery import build
+
 from bs4 import BeautifulSoup
+from googleapiclient.discovery import build
 
 from .gmail_auth import get_gmail_credentials
 
@@ -31,9 +33,7 @@ def _decode_body(payload) -> str:
         body_data = part.get("body", {}).get("data")
         mime_type = part.get("mimeType", "")
         if body_data and ("html" in mime_type or "plain" in mime_type):
-            decoded = base64.urlsafe_b64decode(body_data + "===").decode(
-                "utf-8", errors="ignore"
-            )
+            decoded = base64.urlsafe_b64decode(body_data + "===").decode("utf-8", errors="ignore")
             html_chunks.append(decoded)
         # recurse into nested multipart
         if "parts" in part:
@@ -103,22 +103,12 @@ def fetch_new_alert_urls(query: str, mark_as_read: bool = True) -> list[tuple[st
     next poll.
     """
     service = _get_service()
-    results = (
-        service.users()
-        .messages()
-        .list(userId="me", q=query, maxResults=50)
-        .execute()
-    )
+    results = service.users().messages().list(userId="me", q=query, maxResults=50).execute()
     message_ids = [m["id"] for m in results.get("messages", [])]
 
     all_listings = []
     for msg_id in message_ids:
-        msg = (
-            service.users()
-            .messages()
-            .get(userId="me", id=msg_id, format="full")
-            .execute()
-        )
+        msg = service.users().messages().get(userId="me", id=msg_id, format="full").execute()
         body = _decode_body(msg["payload"])
         all_listings.extend(extract_listings_with_snippets(body))
 
