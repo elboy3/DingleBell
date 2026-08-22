@@ -36,7 +36,8 @@ though - no way to verify those from your local machine.
 
 3. **Install deps:**
    ```
-   pip install -r requirements.txt
+   uv venv && uv pip install -r requirements.txt -r requirements-dev.txt
+   # or: poe install (once the venv exists and poethepoet is installed)
    ```
 
 4. **Authorize:**
