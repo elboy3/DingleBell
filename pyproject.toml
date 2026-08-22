@@ -8,3 +8,16 @@ line-length = 100
 # strict/opinionated lint setup here.
 select = ["E", "F", "I", "UP", "B"]
 
+[tool.poe.tasks]
+fmt = "ruff format ."
+fmt-check = "ruff format --check ."
+lint = "ruff check ."
+lint-fix = "ruff check --fix ."
+typecheck = "ty check ."
+run = "uvicorn webapp.app:app --reload"
+rescore = "python -m webapp.rescore"
+
+[tool.poe.tasks.check]
+help = "Verify formatting, lint, and types without modifying anything - CI/pre-commit style"
+sequence = ["fmt-check", "lint", "typecheck"]
+
