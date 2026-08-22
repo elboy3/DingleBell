@@ -88,15 +88,16 @@ perpetual work-in-progress.
 
 ## Current focus: the shared web app pivot
 
-Status as of 2026-08-22: schema extended, `webapp/` built and verified
-locally end-to-end (feed/rating/comment/hide/open-houses/identity), the
-browser-scan ingestion workflow formalized as a project skill, and AI
-scoring working via the scanning session's own vision (no API key
-needed - see "The pivot within the pivot" below). **Not yet hosted
-anywhere** (no Turso/Fly.io accounts set up yet), and the taste profile
-is in progress (user has started sending liked StreetEasy links).
-See `STATUS.md`'s "Shared web app pivot" section for the live
-checklist of what's left.
+Status as of 2026-08-22: schema extended, rebuilt as a React SPA +
+JSON API (see architecture section below - reversed the original
+Jinja decision after real usage showed it felt clunky), feed
+filters/leaderboard/review-status segmentation added, the browser-scan
+ingestion workflow formalized as a project skill, and AI scoring
+working via the scanning session's own vision (no API key needed).
+**Not yet hosted anywhere** (no Turso/Fly.io accounts set up yet), and
+the taste profile is in progress (user has started sending liked
+StreetEasy links). See `STATUS.md`'s "Shared web app pivot" section
+for the live checklist of what's left.
 
 **Phase 2.5 (interactive SMS/texting agent), previously designed in
 `ROADMAP.md`/`DECISIONS.md`, is superseded by this pivot** - the user
@@ -106,11 +107,34 @@ pending plan.
 
 ## Architecture summary - shared web app (see DECISIONS.md for full reasoning)
 
-- **FastAPI + Jinja2 server-rendered templates, no JS build step**
-  (`webapp/`) - the interactions are small CRUD actions for 2 known
-  users on a small dataset; no SPA framework needed. htmx is a
-  documented future upgrade if plain-form page reloads feel clunky,
-  not built yet.
+- **React + TypeScript SPA (`frontend/`, Vite) talking to a FastAPI
+  JSON API (`webapp/`).** Started as server-rendered Jinja2 ("no JS
+  build step needed for 2 users") - reversed after the user actually
+  used the app and found full-page reloads on every click felt
+  "templated," not slick. `webapp/routes/api_*.py` are pure JSON
+  endpoints (CORS-enabled for the frontend origin); the old Jinja
+  templates/routes were deleted outright, not left dormant. **Two
+  processes now, not one** - `poe api` (FastAPI, port 8000) and
+  `poe web` (Vite dev server, pinned to port 5175) - or `poe dev` to
+  run both.
+- **Frontend and backend must be accessed via the same hostname** -
+  both `localhost`, never mix with `127.0.0.1`. A real bug (identity
+  cookie silently not sent) came from exactly this: different
+  hostnames count as cross-*site* for `SameSite=Lax` cookie purposes
+  even though both are loopback. See DECISIONS.md.
+- **Pages**: Feed (sort by AI score or min-of-both-ratings; filters for
+  neighborhood/price range/move-in date; a "needs my review" / "needs
+  both" segmented filter), ListingDetail (Google Maps embed - keyless,
+  no API key - back link, comments), Hidden, OpenHouses, Leaderboard
+  (ranked by min-of-both-ratings, only listings both people have
+  rated), WhoAmI.
+- **Testing this app's own UI doesn't need the authenticated
+  browser-use session** - only StreetEasy scraping does. Use a plain
+  headless Playwright browser (`frontend/`'s own `playwright` dev
+  dependency) against `localhost:5175`/`localhost:8000` instead - it's
+  independent of the user's real browser and its permission prompts,
+  so it works even when the user isn't physically present to click
+  anything.
 - **Ingestion via an authenticated browser scan, not a cron job.**
   The `browser-use` MCP plugin drives the user's real, already-logged-in
   Brave/Chrome session to load StreetEasy's saved-search results page
@@ -192,18 +216,21 @@ pending plan.
 ### Shared web app (current focus)
 | File | Purpose |
 |---|---|
-| `webapp/app.py` | FastAPI app instance, mounts all routers |
+| `webapp/app.py` | FastAPI app instance, CORS, mounts all API routers |
 | `webapp/deps.py` | `get_store()`, `get_current_user()`, `KNOWN_USERS` |
 | `webapp/config.py` | Thin wrapper around `apt_agent.main.load_config()` |
 | `webapp/ranking.py` | `compute_rating_summary()` - shared min-of-both-ratings logic |
-| `webapp/scoring.py` | Claude vision taste-match scoring, graceful degradation |
+| `webapp/feed_logic.py` | `enrich()`/`filter_listings()`/`sort_listings()` - shared across API routes |
+| `webapp/scoring.py` | Claude vision taste-match scoring, graceful degradation (secondary/fallback path) |
 | `webapp/rescore.py` | `python -m webapp.rescore` - manual backfill for stale/missing AI scores |
-| `webapp/routes/feed.py` | `GET /` - sortable/filterable shared feed |
-| `webapp/routes/listing.py` | Listing detail + rating/comment/hidden POST actions |
-| `webapp/routes/hidden.py` | `GET /hidden` - review + unhide |
-| `webapp/routes/open_houses.py` | `GET /open-houses` - deterministic upcoming-open-house view |
-| `webapp/routes/identity.py` | `GET`/`POST /whoami` - cookie-based identity |
-| `webapp/templates/`, `webapp/static/` | Jinja2 templates + plain CSS, no build step |
+| `webapp/routes/api_listings.py` | `GET /api/listings` (feed, filters/sort), `/api/listings/{id}`, rating/comment/hidden, `/api/hidden`, `/api/neighborhoods` |
+| `webapp/routes/api_open_houses.py` | `GET /api/open-houses` |
+| `webapp/routes/api_identity.py` | `GET`/`POST /api/whoami` - cookie-based identity |
+| `frontend/src/App.tsx` | React Router setup, identity gate |
+| `frontend/src/api.ts` | Fetch client - **must point at `localhost:8000`, not `127.0.0.1:8000`** (cookie hostname match) |
+| `frontend/src/pages/*.tsx` | Feed, ListingDetail, Hidden, OpenHouses, Leaderboard, WhoAmI |
+| `frontend/src/components/*.tsx` | `ListingCard`, `Stars`, `NavBar` |
+| `frontend/vite.config.ts` | Dev server pinned to port 5175 (not the 5173 default - avoids colliding with other local projects) |
 | `apt_agent/browser_scan/extract.js` | DOM-extraction script, run via `browser-use`'s `js()` |
 | `apt_agent/browser_scan_helpers.py` | Field parsing, batch dedup, pacing/page-cap constants |
 | `apt_agent/browser_import.py` | Persists a scan's output into `listings.db`, wires in AI scoring |
@@ -246,13 +273,19 @@ pending plan.
   - `poe lint` / `poe lint-fix`
   - `poe typecheck`
   - `poe check` - the full verify-only sequence (fmt-check + lint + typecheck), CI/pre-commit style
-  - `poe run` - `uvicorn webapp.app:app --reload`
+  - `poe api` - `uvicorn webapp.app:app --reload --port 8000`
+  - `poe web` - `npm --prefix frontend run dev` (Vite, port 5175)
+  - `poe dev` - both together
   - `poe rescore` - `python -m webapp.rescore`
 - **`uv` for local env/installs** (light adoption - `requirements.txt`/
   `requirements-dev.txt` stay the source of truth, GitHub Actions and
   the planned Dockerfile stay on plain `pip`, not touched). `uv` works
   against the existing `.venv` without needing to recreate it.
-- Run `poe check` before considering any Python change done.
+- **Frontend**: plain `npm`/`npx` in `frontend/` - `npx tsc --noEmit`
+  for type-checking, no separate lint step configured yet.
+- Run `poe check` (backend) before considering any Python change done;
+  `npx tsc --noEmit` (in `frontend/`) before considering any TS change
+  done.
 
 ## Known limitations / open items
 

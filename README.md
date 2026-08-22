@@ -2,9 +2,10 @@
 
 A shared web app for two people to browse, rate, comment on, and hide
 Brooklyn apartment listings together, asynchronously, from their own
-phones - with an AI taste-match score computed for each listing. Fed by
-an interactive browser scan of StreetEasy's real search results (not
-email alerts, not a cron job).
+phones - with an AI taste-match score computed for each listing, a
+leaderboard of what you both like, and filters for neighborhood/price/
+move-in date. Fed by an interactive browser scan of StreetEasy's real
+search results (not email alerts, not a cron job).
 
 There's a second, older piece in this repo too: a Gmail-alert email
 pipeline (`apt_agent/`) that's still running on a GitHub Actions cron,
@@ -38,16 +39,24 @@ but isn't being built on further.
 uv venv
 uv pip install -r requirements.txt -r requirements-dev.txt
 # or, once poethepoet is installed: poe install
+cd frontend && npm install && cd ..
 ```
 
 ```
-poe run          # uvicorn webapp.app:app --reload, http://127.0.0.1:8000
+poe dev          # backend (localhost:8000) + frontend (localhost:5175) together
 ```
 
-Visit `/whoami`, pick "Elliott" or "Madison" (no password - see
-`CLAUDE.md` for why that's fine at this scale), and you're in. This
-runs against the same `listings.db` the email pipeline uses/updates -
-no separate setup needed to see real data locally.
+Open **http://localhost:5175** (not `127.0.0.1` - the identity cookie
+is scoped to the `localhost` hostname specifically, see `DECISIONS.md`
+if you're curious why that matters). Pick "Elliott" or "Madison" (no
+password - see `CLAUDE.md` for why that's fine at this scale), and
+you're in. This runs against the same `listings.db` the email pipeline
+uses/updates - no separate setup needed to see real data locally.
+
+This is a React (Vite + TypeScript) SPA talking to a FastAPI JSON API
+- `webapp/` for the backend, `frontend/` for the UI. (It started as
+server-rendered Jinja2 templates; rebuilt after real usage showed
+full-page reloads felt clunky - see `DECISIONS.md`.)
 
 ### 2. Populate the feed
 

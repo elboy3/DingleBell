@@ -78,10 +78,16 @@ Built and verified locally (all via Claude sessions):
 - [x] [CLAUDE] Schema: `listing_reactions` table (per-user rating/comment),
       shared `hidden`/`hidden_by`/`hidden_at`, `ai_score`/`ai_reasoning`/
       `ai_profile_version`, `open_house_raw`/`open_house_date`
-- [x] [CLAUDE] `webapp/` - FastAPI + Jinja2 app: feed (sort by AI score or
-      by min-of-both-ratings), listing detail + rating/comment/hide,
-      `/open-houses`, `/hidden`, lightweight cookie identity - tested
-      end-to-end locally against the real `listings.db`
+- [x] [CLAUDE] `webapp/` (FastAPI JSON API) + `frontend/` (React/TS SPA,
+      Vite) - feed with sort (AI score/our ratings/leaderboard) and
+      filters (neighborhood, price range, move-in date, "needs my
+      review"/"needs both"), listing detail (Google Maps embed, back
+      link, rating/comment/hide), `/open-houses`, `/hidden`,
+      `/leaderboard`, lightweight cookie identity, mobile-responsive
+      nav/filters - tested end-to-end via headless Playwright against
+      the real `listings.db`. Rebuilt from an initial Jinja2
+      server-rendered version after real usage showed full-page
+      reloads felt "templated" - see DECISIONS.md.
 - [x] [CLAUDE] Formalized the browser-scan workflow: `extract.js` +
       `browser_scan_helpers.py` (with the pacing/page-cap fix for the
       PerimeterX trip found while building this) + a project skill
@@ -93,11 +99,15 @@ Built and verified locally (all via Claude sessions):
       kept only as an optional secondary fallback, not required.
 - [x] [CLAUDE] Dev tooling: `ruff` (format + lint), `ty` (Astral's type
       checker), `poethepoet` (task runner - `poe check`/`fmt`/`lint`/
-      `typecheck`/`run`/`rescore`/`install`), light `uv` adoption for
-      local env/installs (`requirements.txt` stays the source of truth,
-      GitHub Actions untouched). Fixed a real bug `uv`'s stricter
-      resolver caught: `requirements.txt` had invented version pins for
-      several deps, not what was actually installed/tested.
+      `typecheck`/`api`/`web`/`dev`/`rescore`/`install`), light `uv`
+      adoption for local env/installs (`requirements.txt` stays the
+      source of truth, GitHub Actions untouched), Playwright (headless
+      browser testing for the app's own UI, independent of the
+      authenticated browser-use session). Fixed real bugs found via
+      testing: invented version pins in `requirements.txt`, an empty
+      `min_score=""` crashing the feed, a cross-hostname SameSite
+      cookie bug (frontend/backend must both use `localhost`, not mix
+      with `127.0.0.1`).
 
 Needs you (all [MANUAL] - real accounts/credentials/content only you can provide):
 - [ ] [MANUAL] Send reference photos or StreetEasy links (liked + disliked)
@@ -165,3 +175,23 @@ Needs you (all [MANUAL] - real accounts/credentials/content only you can provide
   all [MANUAL]: reference photos for the taste profile, an Anthropic API
   key, and Turso/Fly.io account setup for hosting. Full design in
   `.claude/plans/well-i-realized-that-goofy-platypus.md`.
+- **2026-08-22 (later)**: User used the app for real (rated + commented
+  on a real listing within minutes) and gave direct feedback: no back
+  button, no photos/map embedded, and "still looks very templated
+  jinja." Rebuilt `webapp/` from server-rendered Jinja into a React/TS
+  SPA (`frontend/`) + JSON API, added a Google Maps embed (keyless,
+  no API key), a leaderboard, location/price/move-in-date filters, and
+  a "needs my review"/"needs both" segmentation - all per explicit
+  request. AI scoring no longer needs `ANTHROPIC_API_KEY` at all for
+  the primary path (the scanning session scores listings itself, see
+  DECISIONS.md) - removed as a stated blocker. Found and fixed two
+  real bugs via testing: an empty `min_score` crashing the feed, and a
+  cross-hostname `SameSite` cookie bug that silently broke login
+  (frontend/backend must both be accessed via `localhost`, never mixed
+  with `127.0.0.1`). Also found and fixed real mobile-viewport overflow
+  issues (nav bar, filter bar) via a Playwright mobile-width test.
+  Tested throughout via a fresh headless Playwright browser rather than
+  the authenticated browser-use session, since this app's own UI needs
+  no StreetEasy authentication - notable because the user stepped away
+  mid-session and browser-use's Chrome permission prompt can't be
+  clicked unattended, but this app's testing wasn't blocked by that.

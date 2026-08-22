@@ -32,9 +32,12 @@ for the full reasoning.
 - [x] Schema: per-user ratings/comments, shared hide flag, AI score
       fields, open-house fields (extends the existing `ListingStore`,
       shared with the email pipeline)
-- [x] `webapp/` - FastAPI + Jinja2 shared feed, rating/comment/hide,
-      open-houses view, hidden-listings review, lightweight identity -
-      built and tested locally end-to-end
+- [x] `webapp/` (FastAPI JSON API) + `frontend/` (React/TS SPA) - shared
+      feed with sort/filters/leaderboard/review-status segmentation,
+      rating/comment/hide, open-houses view, hidden-listings review,
+      lightweight identity, Google Maps embed - built and tested
+      locally end-to-end. Started as server-rendered Jinja2, rebuilt
+      after real usage showed it felt clunky (see `DECISIONS.md`)
 - [x] Browser-authenticated scan ingestion (bypasses the anti-scraping
       wall that blocks anonymous requests) - formalized as a project
       skill with a pacing fix for a real PerimeterX trip found while
