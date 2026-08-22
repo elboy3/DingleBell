@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+  <p class="empty-note">Listings either of you marked "not interested" - unhide to bring one back into the feed.</p>
+  {% if not listings %}
+    <p class="empty">Nothing hidden right now.</p>
+  {% endif %}
+  {% for listing in listings %}
+    {% include "_listing_card.html" %}
+  {% endfor %}
+{% endblock %}

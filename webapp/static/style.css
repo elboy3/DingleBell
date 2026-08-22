@@ -1,0 +1,66 @@
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, system-ui, sans-serif;
+  margin: 0;
+  background: #f7f7f8;
+  color: #1a1a1a;
+}
+.topnav {
+  display: flex;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: #1a1a1a;
+}
+.topnav a { color: #fff; text-decoration: none; font-weight: 500; }
+.topnav .whoami { color: #9ca3af; margin-left: auto; }
+main { max-width: 640px; margin: 0 auto; padding: 1rem; }
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.listing-card {
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.listing-photo { width: 100%; max-height: 240px; object-fit: cover; display: block; }
+.listing-body { padding: 0.9rem; }
+.listing-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 0.4rem; }
+.listing-address { font-weight: 600; font-size: 1.05rem; color: #1a1a1a; text-decoration: none; }
+.neighborhood { color: #6b7280; font-size: 0.85rem; }
+.listing-facts { display: flex; gap: 0.9rem; color: #374151; margin-top: 0.3rem; font-size: 0.95rem; }
+.open-house { margin-top: 0.4rem; color: #b45309; font-weight: 500; font-size: 0.9rem; }
+.ai-score { margin-top: 0.5rem; font-size: 0.9rem; }
+.ai-reasoning { display: block; color: #6b7280; font-style: italic; }
+
+.ratings { margin-top: 0.6rem; }
+.rating-row { font-size: 0.9rem; margin: 0.15rem 0; display: flex; align-items: center; gap: 0.3rem; }
+.rating-label { color: #9ca3af; font-size: 0.8rem; }
+.star-form { display: inline; }
+.star { background: none; border: none; font-size: 1.1rem; cursor: pointer; padding: 0 0.05rem; color: #d1a30a; }
+.star.filled { color: #d1a30a; }
+
+.card-actions { display: flex; justify-content: space-between; margin-top: 0.7rem; }
+.card-actions a { color: #2563eb; text-decoration: none; font-size: 0.9rem; }
+.inline-form { display: inline; }
+.card-actions button { font-size: 0.85rem; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 6px; padding: 0.3rem 0.6rem; }
+
+.comment { margin: 0.4rem 0; padding: 0.5rem; background: #fff; border-radius: 6px; }
+.comment-form { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem; }
+.comment-form textarea { min-height: 4rem; font-family: inherit; padding: 0.5rem; }
+
+.empty, .empty-note { color: #6b7280; text-align: center; padding: 2rem 0; }
+
+.whoami-page { max-width: 320px; margin: 4rem auto; text-align: center; }
+.whoami-page form { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; }
+.whoami-button { font-size: 1.1rem; padding: 0.9rem; border-radius: 8px; border: none; background: #1a1a1a; color: #fff; }

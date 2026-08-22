@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content %}
+  <form method="get" action="/open-houses" class="controls">
+    <label>
+      <input type="checkbox" name="favorites_only" value="true" {{ "checked" if favorites_only }} onchange="this.form.submit()">
+      Favorites only (both rated 4+)
+    </label>
+  </form>
+
+  {% if not listings %}
+    <p class="empty">No upcoming open houses{{ " for your favorites" if favorites_only else "" }}.</p>
+  {% endif %}
+
+  {% for listing in listings %}
+    {% include "_listing_card.html" %}
+  {% endfor %}
+{% endblock %}

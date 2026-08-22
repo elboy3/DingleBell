@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+  {% include "_listing_card.html" %}
+
+  <h3>Comments</h3>
+  {% for u, r in listing.reactions.items() %}
+    {% if r.comment %}
+      <div class="comment"><strong>{{ u | capitalize }}:</strong> {{ r.comment }}</div>
+    {% endif %}
+  {% endfor %}
+
+  <form method="post" action="/listings/{{ listing.id }}/comment" class="comment-form">
+    <textarea name="comment" placeholder="Leave a note...">{{ listing.reactions.get(user, {}).get("comment", "") }}</textarea>
+    <button type="submit">Save comment</button>
+  </form>
+
+  <p><a href="{{ listing.url }}" target="_blank" rel="noopener">View original listing &rarr;</a></p>
+{% endblock %}

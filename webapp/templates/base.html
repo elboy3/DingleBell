@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Apartment Hunt{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <nav class="topnav">
+    <a href="/">Feed</a>
+    <a href="/open-houses">Open Houses</a>
+    <a href="/hidden">Hidden</a>
+    {% if user %}<span class="whoami">{{ user | capitalize }}</span>{% endif %}
+  </nav>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

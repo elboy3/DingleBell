@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Who are you?</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <main class="whoami-page">
+    <h1>Who's this?</h1>
+    <form method="post" action="/whoami">
+      {% for u in users %}
+        <button type="submit" name="user" value="{{ u }}" class="whoami-button">I'm {{ u | capitalize }}</button>
+      {% endfor %}
+    </form>
+  </main>
+</body>
+</html>
