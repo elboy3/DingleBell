@@ -60,25 +60,49 @@ not just a static checklist.
 
 ---
 
-## Phase 2 - Taste/style scoring [IN PROGRESS - started 2026-08-20]
+## Phase 2 / 2.5 - SUPERSEDED by the shared web app pivot (2026-08-22)
 
-- [ ] [MANUAL] Send reference photos of apartments you both liked/disliked
-- [ ] [CLAUDE] Derive a written taste profile from those photos
-- [ ] [CLAUDE] Wire a scoring step into the pipeline (Claude vision vs. profile)
-- [ ] [CLAUDE] Include score + one-line reasoning in alert emails
-- [ ] [MANUAL] Review real scored alerts, give feedback to refine the profile
+Real-world testing showed StreetEasy doesn't send true real-time alerts and
+the emails are thin on detail - speed was never the actual bottleneck worth
+solving. Pivoted to a shared web app instead of taste-scored emails or a
+texting agent. See the new section below, `DECISIONS.md`, and
+`.claude/plans/well-i-realized-that-goofy-platypus.md` for the full story.
+The old Gmail/cron pipeline (Phase 1 above) is left running, deprioritized
+- not removed, in case Zillow's alert cadence is worth revisiting later.
 
 ---
 
-## Phase 2.5 - Interactive texting agent [DESIGNED, NOT STARTED - sequenced after Phase 2]
+## Shared web app pivot [IN PROGRESS - started 2026-08-22]
 
-- [ ] [MANUAL] Sign up for Twilio, buy a phone number
-- [ ] [CLAUDE] Build the webhook server (FastAPI or similar)
-- [ ] [MANUAL] Deploy to chosen serverless platform, connect Twilio webhook URL
-- [ ] [CLAUDE] Build per-listing Claude-vision description generation at ingestion time
-- [ ] [CLAUDE] Build similarity-query handling (direct comparison, no vector DB)
-- [ ] [CLAUDE] Build preference-notes logging from casual texted feedback
-- [ ] [MANUAL] Test via real texts, iterate on tone/behavior
+Built and verified locally (all via Claude sessions):
+- [x] [CLAUDE] Schema: `listing_reactions` table (per-user rating/comment),
+      shared `hidden`/`hidden_by`/`hidden_at`, `ai_score`/`ai_reasoning`/
+      `ai_profile_version`, `open_house_raw`/`open_house_date`
+- [x] [CLAUDE] `webapp/` - FastAPI + Jinja2 app: feed (sort by AI score or
+      by min-of-both-ratings), listing detail + rating/comment/hide,
+      `/open-houses`, `/hidden`, lightweight cookie identity - tested
+      end-to-end locally against the real `listings.db`
+- [x] [CLAUDE] Formalized the browser-scan workflow: `extract.js` +
+      `browser_scan_helpers.py` (with the pacing/page-cap fix for the
+      PerimeterX trip found while building this) + a project skill
+      (`.claude/skills/scan-streeteasy/SKILL.md`)
+- [x] [CLAUDE] AI scoring pipeline (`webapp/scoring.py`, `webapp/rescore.py`)
+      wired into `browser_import.py`, graceful no-op when no taste profile
+      / API key is configured - **not yet tested against the real Claude
+      API**, since no `ANTHROPIC_API_KEY` is available in this environment
+
+Needs you (all [MANUAL] - real accounts/credentials/content only you can provide):
+- [ ] [MANUAL] Send reference photos (liked + disliked) so a taste profile
+      can be written to `taste_profile.md`
+- [ ] [MANUAL] Provide an `ANTHROPIC_API_KEY` (for local testing now, and
+      as a Fly.io secret once hosted) so AI scoring can actually be verified
+      end-to-end for the first time
+- [ ] [MANUAL] `turso auth login` + create a database (`apt-listings`) -
+      get `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN`
+- [ ] [MANUAL] `fly auth login`, `fly launch`, `fly secrets set` (Turso
+      creds + `ANTHROPIC_API_KEY`), `fly deploy`
+- [ ] [MANUAL] Run the one-time migration script into Turso, confirm the
+      live URL works from both phones
 
 ---
 
@@ -117,3 +141,17 @@ not just a static checklist.
   StreetEasy saved-search alert is live; still waiting on a genuine new
   listing email to confirm one real end-to-end match before trusting the
   "let it run 1-2 days" step.
+- **2026-08-22**: Discovered the email pipeline's actual alert cadence is
+  thin (a few "recommendations" digests/day, no real-time per-listing
+  alerts) and separately discovered (via the `browser-use` MCP plugin) that
+  the user's authenticated browser session can load StreetEasy's full
+  search-results page directly, bypassing the anti-scraping wall entirely.
+  Pivoted: the real problem was never speed, it's giving two people a
+  shared, persistent, ranked view they can react to asynchronously. Built
+  and locally verified `webapp/` (shared feed/ratings/comments/hide/open
+  houses) + the browser-scan ingestion path + an AI scoring pipeline
+  (untested against the real API - no key available in this environment).
+  Old email pipeline left running, deprioritized. Next real blockers are
+  all [MANUAL]: reference photos for the taste profile, an Anthropic API
+  key, and Turso/Fly.io account setup for hosting. Full design in
+  `.claude/plans/well-i-realized-that-goofy-platypus.md`.
