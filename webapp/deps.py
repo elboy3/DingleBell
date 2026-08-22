@@ -1,21 +1,15 @@
-"""Shared dependencies for webapp routes: the one ListingStore instance,
-current-user resolution from an unsigned cookie, and the Jinja2 templates
-environment. No passwords/signed sessions - see plan doc for why that's
-the right call for exactly 2 known users."""
-
-from pathlib import Path
+"""Shared dependencies for the JSON API: the one ListingStore instance
+and current-user resolution from an unsigned cookie. No passwords/signed
+sessions - see plan doc for why that's the right call for exactly 2
+known users."""
 
 from fastapi import Request
-from fastapi.templating import Jinja2Templates
 
 from apt_agent.store import ListingStore
 
 from .config import load_webapp_config
 
-BASE_DIR = Path(__file__).resolve().parent
 KNOWN_USERS = ["elliott", "madison"]
-
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 _store: ListingStore | None = None
 

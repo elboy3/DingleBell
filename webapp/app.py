@@ -1,23 +1,24 @@
-"""FastAPI entry point.
+"""FastAPI entry point - pure JSON API, consumed by the React app in
+frontend/.
 
-uvicorn webapp.app:app --reload   # local dev
-uvicorn webapp.app:app --host 0.0.0.0 --port 8080   # production (see Dockerfile)
+    uvicorn webapp.app:app --reload --port 8000   # local dev
 """
 
-from pathlib import Path
-
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import feed, hidden, identity, listing, open_houses
+from .routes import api_identity, api_listings, api_open_houses
 
-BASE_DIR = Path(__file__).resolve().parent
+app = FastAPI(title="Apartment Hunt API")
 
-app = FastAPI(title="Apartment Hunt")
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5175", "http://127.0.0.1:5175"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-app.include_router(identity.router)
-app.include_router(feed.router)
-app.include_router(listing.router)
-app.include_router(hidden.router)
-app.include_router(open_houses.router)
+app.include_router(api_identity.router)
+app.include_router(api_listings.router)
+app.include_router(api_open_houses.router)

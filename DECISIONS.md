@@ -264,3 +264,42 @@ Same underlying technique the scan-streeteasy skill's scoring step
 already uses (screenshotting a page rather than clicking into
 anything) - reuse this directly if a future session needs a specific
 listing's full photo set, not just its search-results thumbnail.
+
+### Rebuilt webapp/ as a React SPA + JSON API, replacing server-rendered Jinja
+User's own real usage surfaced the actual problem: full-page reloads on
+every star click/hide felt "templated," not the slick, instant-feedback
+interaction a real app should have - plus a genuine bug (`min_score=""`
+crashed the Jinja route with a raw FastAPI validation error rendered as
+JSON in the page). This reverses the original "Jinja2, no build step"
+decision - a real tradeoff, not free: now two processes (Vite dev
+server + FastAPI) instead of one, a build step, a JSON API layer where
+there wasn't one. Worth it for what was actually being asked for.
+
+`webapp/` is now a pure JSON API (routes/api_*.py) with CORS enabled
+for the frontend origin; `frontend/` is a Vite + React + TypeScript app
+consuming it. Old Jinja templates/static/routes deleted outright, not
+left dormant - two competing UIs in one repo would confuse the next
+session more than the diff of deleting them helps anyone.
+
+**Real bug found integrating the two**: the identity cookie silently
+never got sent on API calls even though the POST that set it succeeded
+(200 `{"ok": true}`). Root cause: frontend served from `localhost:5175`,
+backend from `127.0.0.1:8000` - different hostnames count as
+cross-*site* for cookie purposes even though both are loopback, and
+`SameSite=Lax` (the correct setting here, not a bug) only sends cookies
+on top-level navigation across sites, not on background `fetch()`
+calls. Fixed by pointing the frontend's API client at `localhost:8000`
+instead of `127.0.0.1:8000` - same hostname, different port, which *is*
+same-site. Caught via a headless Playwright script hitting the API
+directly and inspecting the actual `Set-Cookie`/cookie-jar behavior,
+not by guessing.
+
+**Testing note**: browser-use (the authenticated-scan tool) needs a
+literal click on a Chrome permission popup, which blocks unattended
+testing when the user isn't physically present. The app's own UI
+doesn't need that authenticated session at all, though - it only talks
+to the local FastAPI API - so a plain headless Playwright browser
+(`npm install -D playwright`, its own independent Chromium, zero
+relation to the user's real browser or its permissions) is the right
+tool for testing this app's own UI. Don't reach for browser-use to test
+things that don't need StreetEasy's authenticated session.

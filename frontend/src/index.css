@@ -32,6 +32,8 @@ body {
   position: sticky;
   top: 0;
   z-index: 10;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 .topnav a {
   color: #d1d3db;
@@ -41,13 +43,13 @@ body {
   letter-spacing: 0.01em;
   transition: color 0.15s;
 }
-.topnav a:hover { color: #fff; }
+.topnav a:hover, .topnav a.active { color: #fff; }
 .topnav .whoami {
   color: #8b8d98;
   margin-left: auto;
   font-size: 0.88rem;
   font-weight: 500;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255, 255, 255, 0.06);
   padding: 0.3rem 0.7rem;
   border-radius: 999px;
 }
@@ -79,13 +81,15 @@ main { max-width: 700px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
   font-size: 0.9rem;
 }
 .controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-weight: 500; }
-.controls select, .controls input[type="number"] {
+.controls select, .controls input[type="number"], .controls input[type="date"] {
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.35rem 0.5rem;
   font-size: 0.9rem;
   font-family: inherit;
+  width: 6em;
 }
+.controls select { width: auto; }
 .controls button {
   border: none;
   background: var(--accent);
@@ -97,7 +101,20 @@ main { max-width: 700px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
   font-size: 0.88rem;
 }
 .controls button:hover { background: var(--accent-hover); }
-.controls a { color: var(--accent); text-decoration: none; font-size: 0.85rem; font-weight: 500; }
+.filters-toggle {
+  background: var(--bg) !important; color: var(--accent) !important;
+  border: 1px solid var(--border) !important; margin-left: auto;
+}
+.filters-toggle:hover { background: #eef2ff !important; }
+.more-filters { margin-top: -0.6rem; }
+
+@media (max-width: 480px) {
+  .topnav { gap: 1rem; padding: 0.75rem 0.9rem; }
+  .topnav a { font-size: 0.85rem; }
+  .topnav .whoami { font-size: 0.8rem; padding: 0.25rem 0.55rem; }
+  main { padding: 1rem 0.75rem 3rem; }
+  .controls { padding: 0.75rem 0.9rem; gap: 0.7rem; }
+}
 
 .listing-card {
   background: var(--surface);
@@ -105,7 +122,7 @@ main { max-width: 700px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
   overflow: hidden;
   margin-bottom: 1.1rem;
   box-shadow: var(--shadow);
-  transition: box-shadow 0.15s, transform 0.15s;
+  transition: box-shadow 0.15s;
 }
 .listing-card:hover { box-shadow: var(--shadow-hover); }
 
@@ -133,6 +150,13 @@ main { max-width: 700px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
 .score-high { background: rgba(22, 163, 74, 0.88); }
 .score-mid { background: rgba(217, 119, 6, 0.88); }
 .score-low { background: rgba(107, 114, 128, 0.88); }
+.rank-badge {
+  position: absolute; bottom: 0.7rem; left: 0.7rem;
+  background: rgba(79, 70, 229, 0.92); color: #fff;
+  font-weight: 800; font-size: 0.95rem;
+  width: 2.1rem; height: 2.1rem; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
 
 .listing-body { padding: 1rem 1.1rem 1.1rem; }
 .listing-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.4rem; }
@@ -155,16 +179,13 @@ main { max-width: 700px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
 .ratings { margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid var(--border); }
 .rating-row { font-size: 0.88rem; margin: 0.2rem 0; display: flex; align-items: center; gap: 0.4rem; font-weight: 500; color: var(--text-muted); }
 .rating-label { color: #b0b3bd; font-size: 0.78rem; margin-top: 0.15rem; }
-.star-form { display: inline; }
 .star { background: none; border: none; font-size: 1.25rem; cursor: pointer; padding: 0 0.03rem; color: #d8dae0; line-height: 1; }
 .star.filled { color: var(--gold); }
-.star-form .star:hover { color: var(--gold); }
+.star:not(.readonly):hover { color: var(--gold); }
+.star.readonly { cursor: default; }
 
 .card-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 0.85rem; gap: 0.6rem; }
-.card-actions a {
-  color: var(--accent); text-decoration: none; font-size: 0.87rem; font-weight: 600;
-}
-.inline-form { display: inline; }
+.card-actions a { color: var(--accent); text-decoration: none; font-size: 0.87rem; font-weight: 600; }
 .card-actions button {
   font-size: 0.82rem; font-weight: 600; background: var(--surface); color: var(--text-muted);
   border: 1px solid var(--border); border-radius: 999px; padding: 0.35rem 0.8rem; cursor: pointer;
@@ -200,7 +221,7 @@ h3 { font-size: 1rem; font-weight: 700; margin: 1.5rem 0 0.6rem; }
 
 .whoami-page { max-width: 320px; margin: 5rem auto; text-align: center; }
 .whoami-page h1 { font-size: 1.4rem; }
-.whoami-page form { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; }
+.whoami-buttons { display: flex; flex-direction: column; gap: 1rem; margin-top: 1.5rem; }
 .whoami-button {
   font-size: 1.05rem; font-weight: 600; padding: 0.95rem; border-radius: var(--radius);
   border: none; background: var(--accent); color: #fff; cursor: pointer; transition: background 0.15s;

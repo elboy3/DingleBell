@@ -15,8 +15,13 @@ fmt-check = "ruff format --check ."
 lint = "ruff check ."
 lint-fix = "ruff check --fix ."
 typecheck = "ty check ."
-run = "uvicorn webapp.app:app --reload"
+api = "uvicorn webapp.app:app --reload --port 8000"
+web = "npm --prefix frontend run dev"
 rescore = "python -m webapp.rescore"
+
+[tool.poe.tasks.dev]
+help = "Run the backend API and frontend dev server together (Ctrl-C stops both)"
+shell = "uvicorn webapp.app:app --reload --port 8000 & npm --prefix frontend run dev & wait"
 
 [tool.poe.tasks.check]
 help = "Verify formatting, lint, and types without modifying anything - CI/pre-commit style"
