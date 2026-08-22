@@ -221,3 +221,21 @@ real bug: `requirements.txt` had invented, never-verified version pins
 for `anthropic`/`fastapi`/`uvicorn`/`jinja2`/`python-multipart` (e.g.
 `anthropic==0.40.0` when `1.0.0` - a major version - was what was
 actually installed and tested against). Re-pinned to match reality.
+
+### AI scoring: the interactive session scores directly, no API key required
+Original design called the Anthropic API (via `ANTHROPIC_API_KEY`) from
+inside `browser_import.py` to score each listing. User pointed out the
+obvious thing this missed: a Claude Code session doing the interactive
+browser scan already has vision and is already looking at the results
+page - there's no need for a *separate* API-key-based call to have
+Claude judge a photo it's already looking at.
+
+Restructured `import_listings()` to prefer a pre-computed `ai_score`/
+`ai_reasoning` on each raw listing dict (set by the scanning session
+itself, per `.claude/skills/scan-streeteasy/SKILL.md`'s step 7 - score
+against `taste_profile.md` using a page screenshot, no API call). The
+`ANTHROPIC_API_KEY` + `webapp/scoring.py` path is kept as a secondary
+fallback only, for listings that don't already carry a score - not
+required, not the primary path. This removes an entire external
+credential from the critical path for something that only ever needed
+to happen during an already-interactive Claude session anyway.

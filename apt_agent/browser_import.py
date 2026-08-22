@@ -19,11 +19,19 @@ spam. `would_alert` in the returned stats tells you how many of the
 newly-imported listings pass today's hard filters, without emailing
 about any of them.
 
-If a taste_profile.md + ANTHROPIC_API_KEY are configured, each newly
-imported listing also gets an AI taste-match score (see webapp/scoring.py)
-- `main()` wires this up automatically when both are present, and
-leaves scoring off (score_fn=None) otherwise, so ingestion works
-identically whether or not scoring is set up yet.
+AI taste-match scoring has two independent paths, either or neither of
+which may be in play for a given import:
+
+1. **Pre-computed, per-listing.** If a raw listing dict already has
+   `ai_score`/`ai_reasoning` set (e.g. because a Claude Code session
+   doing an interactive browser scan looked at the photo itself and
+   judged it against the taste profile, no API call needed - that's
+   the primary path now), those values are saved as-is.
+2. **score_fn fallback.** For listings with no pre-computed score,
+   `main()` optionally wires up an Anthropic-API-key-based scorer (see
+   webapp/scoring.py) if `taste_profile.md` + `ANTHROPIC_API_KEY` are
+   both present. This is a secondary/optional path, not required -
+   ingestion works identically with neither path configured.
 """
 
 import json
@@ -37,15 +45,15 @@ from .store import ListingStore
 
 def import_listings(listings: list[dict], cfg: dict, store: ListingStore, score_fn=None) -> dict:
     """score_fn, if given: Callable[[dict], tuple[int | None, str | None]] -
-    called with the listing dict for every newly-imported (not
-    already-seen) listing; (score, reasoning) is stored via
-    store.set_ai_score() when score is not None. Any failure inside
-    score_fn should already be caught there and returned as (None, None)
-    - import_listings doesn't handle scoring exceptions itself, since a
-    scoring bug should never be able to break ingestion."""
+    a fallback scorer called only for listings that don't already carry
+    a pre-computed ai_score/ai_reasoning (see module docstring). Any
+    failure inside score_fn should already be caught there and returned
+    as (None, None) - import_listings doesn't handle scoring exceptions
+    itself, since a scoring bug should never be able to break ingestion."""
     new_count = 0
     already_seen_count = 0
     would_alert_count = 0
+    scored_count = 0
 
     for raw in listings:
         if store.already_seen(raw["url"]):
@@ -77,15 +85,18 @@ def import_listings(listings: list[dict], cfg: dict, store: ListingStore, score_
         if ok:
             would_alert_count += 1
 
-        if score_fn is not None:
+        score, reasoning = raw.get("ai_score"), raw.get("ai_reasoning")
+        if score is None and score_fn is not None:
             score, reasoning = score_fn(listing)
-            if score is not None:
-                store.set_ai_score(listing_id, score, reasoning, cfg["scoring"]["profile_version"])
+        if score is not None:
+            store.set_ai_score(listing_id, score, reasoning, cfg["scoring"]["profile_version"])
+            scored_count += 1
 
     return {
         "new": new_count,
         "already_seen": already_seen_count,
         "would_alert": would_alert_count,
+        "scored": scored_count,
     }
 
 
@@ -120,7 +131,10 @@ def main():
     store = ListingStore(cfg["storage"]["db_path"])
     score_fn = _build_score_fn(cfg)
     if score_fn is None:
-        print("[info] no taste_profile.md / ANTHROPIC_API_KEY - importing without AI scoring")
+        print(
+            "[info] no ANTHROPIC_API_KEY fallback scorer configured - "
+            "relying on pre-computed ai_score fields only, if present"
+        )
 
     stats = import_listings(listings, cfg, store, score_fn=score_fn)
     print(f"Imported: {stats}")

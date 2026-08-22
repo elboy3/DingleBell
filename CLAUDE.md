@@ -90,14 +90,13 @@ perpetual work-in-progress.
 
 Status as of 2026-08-22: schema extended, `webapp/` built and verified
 locally end-to-end (feed/rating/comment/hide/open-houses/identity), the
-browser-scan ingestion workflow formalized as a project skill, and an
-AI-scoring pipeline wired in with graceful degradation - **but not yet
-tested against the real Claude API** (no `ANTHROPIC_API_KEY` was
-available in the building session), and **not yet hosted anywhere**
-(no Turso/Fly.io accounts set up yet). See `STATUS.md`'s "Shared web
-app pivot" section for the live checklist of what's left, all of it
-things only the user can do (reference photos, an API key, cloud
-account signups).
+browser-scan ingestion workflow formalized as a project skill, and AI
+scoring working via the scanning session's own vision (no API key
+needed - see "The pivot within the pivot" below). **Not yet hosted
+anywhere** (no Turso/Fly.io accounts set up yet), and the taste profile
+is in progress (user has started sending liked StreetEasy links).
+See `STATUS.md`'s "Shared web app pivot" section for the live
+checklist of what's left.
 
 **Phase 2.5 (interactive SMS/texting agent), previously designed in
 `ROADMAP.md`/`DECISIONS.md`, is superseded by this pivot** - the user
@@ -137,14 +136,21 @@ pending plan.
   reversible decision - not per-user, unlike rating), `ai_score`/
   `ai_reasoning`/`ai_profile_version`, and `open_house_raw`/
   `open_house_date`.
-- **AI taste-match scoring runs synchronously during import**
-  (`webapp/scoring.py`, called from `browser_import.py`), using Claude
-  vision against a written taste profile (`taste_profile.md` - doesn't
-  exist yet, needs reference photos from the user). Every failure mode
-  (no photo, fetch failure, API error, bad response) returns
-  `(None, None)` and never blocks ingestion - matches `filters.py`'s
-  existing "unknown field, don't block on it" pattern. `webapp/rescore.py`
-  is a manual backfill command for un-scored or stale-profile listings.
+- **AI taste-match scoring: the scanning session scores it directly,
+  no API key required.** The Claude Code session doing the interactive
+  browser scan already has vision and is already looking at the
+  results page - it judges each new listing's photo (via a page
+  screenshot) against `taste_profile.md` and sets `ai_score`/
+  `ai_reasoning` directly in the JSON handed to `browser_import.py`
+  (see `.claude/skills/scan-streeteasy/SKILL.md` step 7). No Anthropic
+  API call needed for this, the primary path. `webapp/scoring.py`
+  (Claude-vision-via-API-key) is kept only as a **secondary, optional
+  fallback** for listings that arrive without a pre-computed score -
+  every failure mode there (no photo, fetch failure, API error, bad
+  response) returns `(None, None)` and never blocks ingestion, matching
+  `filters.py`'s "unknown field, don't block on it" pattern.
+  `webapp/rescore.py` is a manual backfill command using that fallback
+  path, for un-scored or stale-profile listings.
 - **Ranking is two separate, non-destructive mechanisms** - explicit
   shared hide (reversible via `/hidden`) for "we're done with this
   one," and a live, adjustable sort/filter (AI score, or min-of-both
@@ -251,9 +257,11 @@ pending plan.
 ## Known limitations / open items
 
 **Shared web app:**
-- AI scoring has never been run against the real Claude API in this
-  environment (no `ANTHROPIC_API_KEY` available while building it) -
-  the graceful-degradation path is proven, the real scoring call isn't.
+- The optional `webapp/scoring.py` API-key fallback path has never been
+  run against the real Claude API (no `ANTHROPIC_API_KEY` was available
+  while building it) - its graceful-degradation path is proven, the
+  real API call isn't. Doesn't block anything: the primary scoring
+  path (the scanning session itself) doesn't depend on it.
 - `taste_profile.md` doesn't exist yet - needs reference photos.
 - Not hosted anywhere yet - no Turso or Fly.io accounts set up.
 - Zillow's real alert-email/page links are wrapped in click-tracking

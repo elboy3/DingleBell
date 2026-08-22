@@ -41,7 +41,9 @@ pacing and page cap below exist specifically to avoid re-triggering that.
      open a new tab per page).
    - `wait_for_load()`.
    - Run `extract.js`'s content via `js(...)` to get that page's raw cards.
-   - Accumulate the raw cards.
+   - Take a screenshot (`browser_screenshot`) of the page too, if `taste_profile.md`
+     exists (see step 7 - skip the screenshot if there's no profile to score against).
+   - Accumulate the raw cards (and that page's screenshot, if taken).
    - If there are more pages left to fetch, `time.sleep(PAGE_PACING_SECONDS)`
      before navigating to the next one. **Do not skip this** - this is the
      specific fix for the PerimeterX trip described above.
@@ -51,20 +53,38 @@ pacing and page cap below exist specifically to avoid re-triggering that.
 
 6. Once done paging, run (still inside `browser_exec`, since that's where the
    accumulated raw cards live) `apt_agent.browser_scan_helpers.parse_page_json`
-   on the accumulated list, then `dedupe_within_batch` on the result. Write
-   the final JSON list to a file in the scratchpad directory.
+   on the accumulated list, then `dedupe_within_batch` on the result.
 
-7. Run `python -m apt_agent.browser_import <scratch-file-path>` via Bash (use
+7. **AI scoring - no API key needed, you do this yourself.** If
+   `taste_profile.md` doesn't exist yet, skip this step entirely (score
+   nothing - don't guess at a profile). If it does exist, read it, then for
+   each listing that isn't already in `listings.db` (check via
+   `ListingStore.already_seen(url)` - don't bother scoring ones that are
+   already there, the import will ignore any score given for them anyway):
+   look at that listing's photo in the page screenshot from step 5 (matched
+   by address/price text next to it), judge it against the taste profile
+   using your own vision - no Anthropic API call, you're already looking at
+   it - and set that listing dict's `ai_score` (0-100) and `ai_reasoning`
+   (one sentence, citing the specific visual cue) fields directly. This is
+   the primary scoring path now; `webapp/scoring.py`'s API-key-based scorer
+   is a secondary fallback for listings you don't score this way, not
+   something you need to configure to do this.
+
+8. Write the final JSON list (each listing's normal fields, plus `ai_score`/
+   `ai_reasoning` where you scored it in step 7) to a file in the scratchpad
+   directory.
+
+9. Run `python -m apt_agent.browser_import <scratch-file-path>` via Bash (use
    the repo's `.venv/bin/python` if present). This dedups against everything
    already in `listings.db`, applies today's hard filters (for the
-   `would_alert` stat only - it never sends email), and AI-scores newly
-   imported listings if a `taste_profile.md` + `ANTHROPIC_API_KEY` are both
-   configured.
+   `would_alert` stat only - it never sends email), and saves whatever
+   `ai_score`/`ai_reasoning` you set in step 7 (or falls back to the
+   API-key scorer per-listing if you didn't score it and one's configured).
 
-8. Report back to the user: how many pages were scanned vs. how many exist
-   in total (from the results page's header count), and the `{new,
-   already_seen, would_alert}` stats the import script printed. If the page
-   cap was hit before reaching the last page, say so explicitly and note that
-   running the scan again will pick up where it left off (already-seen
-   listings are skipped automatically, so nothing needs to be tracked
-   between runs).
+10. Report back to the user: how many pages were scanned vs. how many exist
+    in total (from the results page's header count), and the `{new,
+    already_seen, would_alert, scored}` stats the import script printed. If
+    the page cap was hit before reaching the last page, say so explicitly
+    and note that running the scan again will pick up where it left off
+    (already-seen listings are skipped automatically, so nothing needs to be
+    tracked between runs).

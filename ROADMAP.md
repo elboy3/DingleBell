@@ -39,12 +39,12 @@ for the full reasoning.
       wall that blocks anonymous requests) - formalized as a project
       skill with a pacing fix for a real PerimeterX trip found while
       building it
-- [x] AI taste-match scoring pipeline, wired in with graceful
-      degradation - **not yet tested against the real Claude API**
-- [ ] Reference photos -> written taste profile (`taste_profile.md`) -
-      **needs the user**
-- [ ] Verify AI scoring against the real API once a key is available -
-      **needs the user's `ANTHROPIC_API_KEY`**
+- [x] AI taste-match scoring: primary path is the scanning Claude Code
+      session scoring each listing itself (vision + a page screenshot,
+      no API key needed) - an Anthropic-API-key-based fallback exists
+      but is optional, not required
+- [ ] Reference photos or StreetEasy links -> written taste profile
+      (`taste_profile.md`) - **needs the user, in progress**
 - [ ] Host it: Turso (db) + Fly.io (app) - **needs the user's accounts**
 - [ ] Dev tooling: ruff (format+lint), ty (types), poethepoet (task
       runner), light `uv` adoption - done, see `CLAUDE.md` "Dev tooling"

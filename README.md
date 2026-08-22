@@ -67,18 +67,18 @@ Behind the scenes this ends in `python -m apt_agent.browser_import
 
 ### 3. AI taste-match scoring
 
-Each newly-imported listing gets scored automatically **if** both of
-these exist:
+No API key needed for this - the Claude Code session doing the scan
+(step 2) scores each new listing itself, using its own vision against
+`taste_profile.md` (written from reference photos or StreetEasy links
+you send - see `.claude/skills/scan-streeteasy/SKILL.md` step 7).
+Doesn't exist yet as of this writing; in progress.
 
-- `taste_profile.md` at the repo root (written from reference photos -
-  send some liked/disliked apartment photos to a Claude session to
-  generate this; doesn't exist yet as of this writing)
-- an `ANTHROPIC_API_KEY` environment variable
-
-If either is missing, ingestion still works fine - scoring is just
-skipped (see `webapp/scoring.py`'s graceful-degradation design). Once
-both exist, backfill anything scored before or scored against a
-now-stale profile version with:
+There's a secondary, optional fallback (`webapp/scoring.py`, an
+Anthropic-API-key-based scorer) for listings imported without a
+pre-computed score - not required for the primary path above. If you
+do set it up (`ANTHROPIC_API_KEY` env var + `taste_profile.md`), it
+also powers a manual backfill for anything un-scored or scored against
+a since-revised profile:
 
 ```
 poe rescore       # python -m webapp.rescore

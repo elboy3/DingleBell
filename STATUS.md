@@ -86,10 +86,11 @@ Built and verified locally (all via Claude sessions):
       `browser_scan_helpers.py` (with the pacing/page-cap fix for the
       PerimeterX trip found while building this) + a project skill
       (`.claude/skills/scan-streeteasy/SKILL.md`)
-- [x] [CLAUDE] AI scoring pipeline (`webapp/scoring.py`, `webapp/rescore.py`)
-      wired into `browser_import.py`, graceful no-op when no taste profile
-      / API key is configured - **not yet tested against the real Claude
-      API**, since no `ANTHROPIC_API_KEY` is available in this environment
+- [x] [CLAUDE] AI scoring: primary path is the Claude Code session doing
+      the scan scoring each listing itself (vision + a page screenshot,
+      no API key) per `.claude/skills/scan-streeteasy/SKILL.md` step 7.
+      `webapp/scoring.py`/`webapp/rescore.py` (Anthropic-API-key-based)
+      kept only as an optional secondary fallback, not required.
 - [x] [CLAUDE] Dev tooling: `ruff` (format + lint), `ty` (Astral's type
       checker), `poethepoet` (task runner - `poe check`/`fmt`/`lint`/
       `typecheck`/`run`/`rescore`/`install`), light `uv` adoption for
@@ -99,17 +100,19 @@ Built and verified locally (all via Claude sessions):
       several deps, not what was actually installed/tested.
 
 Needs you (all [MANUAL] - real accounts/credentials/content only you can provide):
-- [ ] [MANUAL] Send reference photos (liked + disliked) so a taste profile
-      can be written to `taste_profile.md`
-- [ ] [MANUAL] Provide an `ANTHROPIC_API_KEY` (for local testing now, and
-      as a Fly.io secret once hosted) so AI scoring can actually be verified
-      end-to-end for the first time
+- [ ] [MANUAL] Send reference photos or StreetEasy links (liked + disliked)
+      so a taste profile can be written to `taste_profile.md` - in
+      progress, see log below
 - [ ] [MANUAL] `turso auth login` + create a database (`apt-listings`) -
       get `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN`
 - [ ] [MANUAL] `fly auth login`, `fly launch`, `fly secrets set` (Turso
-      creds + `ANTHROPIC_API_KEY`), `fly deploy`
+      creds), `fly deploy`
 - [ ] [MANUAL] Run the one-time migration script into Turso, confirm the
       live URL works from both phones
+- (no longer needed for the primary scoring path) ~~Provide an
+  `ANTHROPIC_API_KEY`~~ - the scanning session scores listings itself now,
+  see the AI scoring line above. Still relevant only if you want the
+  optional API-key fallback path too.
 
 ---
 
