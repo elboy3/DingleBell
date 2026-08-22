@@ -65,4 +65,4 @@ scoring:
   # (ingestion never blocks on scoring being unset up). profile_path
   # doesn't need to exist yet.
   profile_path: "taste_profile.md"
-  profile_version: "unset"   # bump manually whenever taste_profile.md's content meaningfully changes
+  profile_version: "v1-liked-only-2026-08-22"   # bump manually whenever taste_profile.md's content meaningfully changes
