@@ -20,6 +20,7 @@ export interface Listing {
   available_date: string | null;
   ai_score: number | null;
   ai_reasoning: string | null;
+  first_seen: string;
   hidden: number;
   reactions: Record<string, Reaction>;
   ratings: { elliott: number | null; madison: number | null };

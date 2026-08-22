@@ -162,10 +162,16 @@ main { max-width: 700px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
 .listing-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 0.4rem; }
 .listing-address { font-weight: 700; font-size: 1.08rem; color: var(--text); text-decoration: none; line-height: 1.3; }
 .listing-address:hover { color: var(--accent); }
+.header-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .neighborhood {
   color: var(--accent);
   font-size: 0.76rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em;
   background: #eef2ff; padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap;
+}
+.new-badge {
+  color: #fff; background: #16a34a;
+  font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+  padding: 0.15rem 0.5rem; border-radius: 999px; white-space: nowrap;
 }
 .listing-facts { display: flex; gap: 0.8rem; color: var(--text-muted); margin-top: 0.4rem; font-size: 0.9rem; font-weight: 500; }
 .open-house {

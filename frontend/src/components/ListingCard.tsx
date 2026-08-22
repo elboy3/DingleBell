@@ -9,6 +9,8 @@ interface Props {
   onHide: (id: number, hidden: boolean) => void;
 }
 
+const NEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // "new" for 3 days after first_seen
+
 export function ListingCard({ listing, user, onRate, onHide }: Props) {
   const scoreClass =
     listing.ai_score == null
@@ -18,6 +20,8 @@ export function ListingCard({ listing, user, onRate, onHide }: Props) {
         : listing.ai_score >= 40
           ? "score-mid"
           : "score-low";
+
+  const isNew = listing.first_seen && Date.now() - new Date(listing.first_seen).getTime() < NEW_WINDOW_MS;
 
   return (
     <div className="listing-card">
@@ -38,7 +42,10 @@ export function ListingCard({ listing, user, onRate, onHide }: Props) {
           <Link to={`/listings/${listing.id}`} className="listing-address">
             {listing.address || listing.url}
           </Link>
-          {listing.neighborhood && <span className="neighborhood">{listing.neighborhood}</span>}
+          <span className="header-tags">
+            {isNew && <span className="new-badge">New</span>}
+            {listing.neighborhood && <span className="neighborhood">{listing.neighborhood}</span>}
+          </span>
         </div>
         <div className="listing-facts">
           {listing.beds != null && <span>{listing.beds} bed</span>}
