@@ -52,14 +52,11 @@ def import_listings(listings: list[dict], cfg: dict, store: ListingStore, score_
     itself, since a scoring bug should never be able to break ingestion."""
     new_count = 0
     already_seen_count = 0
+    backfilled_count = 0
     would_alert_count = 0
     scored_count = 0
 
     for raw in listings:
-        if store.already_seen(raw["url"]):
-            already_seen_count += 1
-            continue
-
         listing = {
             "url": raw["url"],
             "address": raw.get("address"),
@@ -75,6 +72,17 @@ def import_listings(listings: list[dict], cfg: dict, store: ListingStore, score_
             "available_date": raw.get("available_date"),
             "source": raw.get("source", "streeteasy-browser-scan"),
         }
+
+        if store.already_seen(raw["url"]):
+            # A rescan of a listing we already have - fill in whatever was
+            # missing the first time (typically photo/address) rather than
+            # skipping outright, so re-visiting a "needs backfill" listing
+            # actually resolves it.
+            if store.backfill_listing(raw["url"], listing):
+                backfilled_count += 1
+            else:
+                already_seen_count += 1
+            continue
 
         ok, _reason = passes_filters(listing, cfg)
         if ok and store.already_alerted_for_address(listing.get("address")):
@@ -95,6 +103,7 @@ def import_listings(listings: list[dict], cfg: dict, store: ListingStore, score_
     return {
         "new": new_count,
         "already_seen": already_seen_count,
+        "backfilled": backfilled_count,
         "would_alert": would_alert_count,
         "scored": scored_count,
     }

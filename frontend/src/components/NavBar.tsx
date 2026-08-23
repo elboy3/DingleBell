@@ -7,6 +7,7 @@ export function NavBar({ user }: { user: string | null }) {
       <NavLink to="/leaderboard">Leaderboard</NavLink>
       <NavLink to="/open-houses">Open Houses</NavLink>
       <NavLink to="/hidden">Hidden</NavLink>
+      <NavLink to="/needs-scan">Needs Scan</NavLink>
       {user && <span className="whoami">{user[0].toUpperCase() + user.slice(1)}</span>}
     </nav>
   );

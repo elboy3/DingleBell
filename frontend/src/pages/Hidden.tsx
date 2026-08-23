@@ -11,12 +11,12 @@ export function Hidden({ user }: { user: string }) {
     load();
   }, []);
 
-  const onRate = async (id: number, rating: number) => {
-    await api.setRating(id, rating);
-    load();
-  };
   const onHide = async (id: number, hidden: boolean) => {
     await api.setHidden(id, hidden);
+    load();
+  };
+  const onCategoryRate = async (id: number, category: string, score: number) => {
+    await api.setCategoryRating(id, category, score);
     load();
   };
 
@@ -30,7 +30,13 @@ export function Hidden({ user }: { user: string }) {
       ) : (
         <div className="feed-grid">
           {listings.map((l) => (
-            <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />
+            <ListingCard
+              key={l.id}
+              listing={l}
+              user={user}
+              onHide={onHide}
+              onCategoryRate={onCategoryRate}
+            />
           ))}
         </div>
       )}

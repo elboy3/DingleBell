@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../api";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
@@ -7,6 +8,7 @@ export function Feed({ user }: { user: string }) {
   const [listings, setListings] = useState<Listing[]>([]);
   const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [needsScanCount, setNeedsScanCount] = useState(0);
 
   const [sort, setSort] = useState("ai");
   const [needsReview, setNeedsReview] = useState("");
@@ -38,22 +40,16 @@ export function Feed({ user }: { user: string }) {
 
   useEffect(() => {
     api.neighborhoods().then(setNeighborhoods);
+    api.needsScan().then((r) => setNeedsScanCount(r.length));
   }, []);
 
-  const onRate = async (id: number, rating: number) => {
-    // Optimistic: fill the stars in immediately, then reconcile with the
-    // server (which also recomputes sort position/leaderboard rank) -
-    // instant feedback on the click itself is what actually matters for
-    // "feels slick," the sort re-shuffling a beat later is fine.
-    setListings((prev) =>
-      prev.map((l) => (l.id === id ? { ...l, ratings: { ...l.ratings, [user]: rating } } : l)),
-    );
-    await api.setRating(id, rating);
-    load();
-  };
   const onHide = async (id: number, hidden: boolean) => {
     setListings((prev) => (hidden ? prev.filter((l) => l.id !== id) : prev));
     await api.setHidden(id, hidden);
+    load();
+  };
+  const onCategoryRate = async (id: number, category: string, score: number) => {
+    await api.setCategoryRating(id, category, score);
     load();
   };
 
@@ -125,11 +121,26 @@ export function Feed({ user }: { user: string }) {
       {loading ? (
         <p className="empty">Loading...</p>
       ) : listings.length === 0 ? (
-        <p className="empty">No listings match these filters.</p>
+        <p className="empty">
+          No listings match these filters.
+          {needsScanCount > 0 && (
+            <>
+              {" "}
+              <Link to="/needs-scan">{needsScanCount} listing{needsScanCount === 1 ? "" : "s"} are
+              waiting on a scan</Link> for a photo/address.
+            </>
+          )}
+        </p>
       ) : (
         <div className="feed-grid">
           {listings.map((l) => (
-            <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />
+            <ListingCard
+              key={l.id}
+              listing={l}
+              user={user}
+              onHide={onHide}
+              onCategoryRate={onCategoryRate}
+            />
           ))}
         </div>
       )}

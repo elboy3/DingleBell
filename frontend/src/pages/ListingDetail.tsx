@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../api";
+import { CATEGORIES } from "../categories";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
@@ -20,15 +21,12 @@ export function ListingDetail({ user }: { user: string }) {
     load();
   }, [id]);
 
-  const onRate = async (listingId: number, rating: number) => {
-    setListing((prev) =>
-      prev && prev.id === listingId ? { ...prev, ratings: { ...prev.ratings, [user]: rating } } : prev,
-    );
-    await api.setRating(listingId, rating);
-    load();
-  };
   const onHide = async (listingId: number, hidden: boolean) => {
     await api.setHidden(listingId, hidden);
+    load();
+  };
+  const onCategoryRate = async (listingId: number, category: string, score: number) => {
+    await api.setCategoryRating(listingId, category, score);
     load();
   };
   const saveComment = async () => {
@@ -49,8 +47,37 @@ export function ListingDetail({ user }: { user: string }) {
       </Link>
 
       <div className="listing-detail-card">
-        <ListingCard listing={listing} user={user} onRate={onRate} onHide={onHide} />
+        <ListingCard
+          listing={listing}
+          user={user}
+          onHide={onHide}
+          onCategoryRate={onCategoryRate}
+        />
       </div>
+
+      {(listing.category_ratings.elliott || listing.category_ratings.madison) && (
+        <div className="category-breakdown">
+          <h3>Category ratings</h3>
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                <th>Elliott</th>
+                <th>Madison</th>
+              </tr>
+            </thead>
+            <tbody>
+              {CATEGORIES.map((c) => (
+                <tr key={c.key}>
+                  <td>{c.label}</td>
+                  <td>{listing.category_ratings.elliott?.[c.key] ?? "-"}</td>
+                  <td>{listing.category_ratings.madison?.[c.key] ?? "-"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {mapQuery && (
         <div className="map-embed">

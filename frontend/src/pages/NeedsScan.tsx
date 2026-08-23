@@ -3,38 +3,31 @@ import { api } from "../api";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
-export function OpenHouses({ user }: { user: string }) {
+export function NeedsScan({ user }: { user: string }) {
   const [listings, setListings] = useState<Listing[]>([]);
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
 
-  const load = async (fav: boolean) => setListings(await api.openHouses(fav));
+  const load = async () => setListings(await api.needsScan());
   useEffect(() => {
-    load(favoritesOnly);
-  }, [favoritesOnly]);
+    load();
+  }, []);
 
   const onHide = async (id: number, hidden: boolean) => {
     await api.setHidden(id, hidden);
-    load(favoritesOnly);
+    load();
   };
   const onCategoryRate = async (id: number, category: string, score: number) => {
     await api.setCategoryRating(id, category, score);
-    load(favoritesOnly);
+    load();
   };
 
   return (
     <div>
-      <div className="controls">
-        <label>
-          <input
-            type="checkbox"
-            checked={favoritesOnly}
-            onChange={(e) => setFavoritesOnly(e.target.checked)}
-          />
-          Favorites only (both rated 4+)
-        </label>
-      </div>
+      <p className="empty-note">
+        Listings missing a photo or address - run a browser scan to backfill these. They're kept
+        out of the main feed until they're ready.
+      </p>
       {listings.length === 0 ? (
-        <p className="empty">No upcoming open houses{favoritesOnly ? " for your favorites" : ""}.</p>
+        <p className="empty">Nothing waiting on a scan - everything has a photo and address.</p>
       ) : (
         <div className="feed-grid">
           {listings.map((l) => (

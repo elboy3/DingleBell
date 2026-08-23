@@ -36,6 +36,16 @@ DOM instead and view them via download + `Read`.
    from context (check open tabs via `list_tabs()` first - the user has had
    a StreetEasy saved-search results tab open before).
 
+   Before starting a fresh-pages scan, also check
+   `ListingStore.needs_backfill_listings()` - these are listings already in
+   `listings.db` missing a photo or address (shown in the webapp's "Needs
+   Scan" view, kept out of the main feed until resolved). If there are any
+   and their URLs are cheap to revisit, visit those pages directly first
+   (same extraction/pacing rules apply) - `browser_import.py` fills in
+   whatever's missing on a listing it's already seen instead of skipping it
+   (see its `backfilled` stat), so revisiting resolves them without any
+   special-casing on your end.
+
 3. Read `apt_agent/browser_scan_helpers.py` for `PAGE_PACING_SECONDS` and
    `MAX_PAGES_PER_SESSION` (don't hardcode these values here - read them, so
    a future tuning change to that file is automatically picked up).
@@ -90,8 +100,8 @@ DOM instead and view them via download + `Read`.
 
 10. Report back to the user: how many pages were scanned vs. how many exist
     in total (from the results page's header count), and the `{new,
-    already_seen, would_alert, scored}` stats the import script printed. If
-    the page cap was hit before reaching the last page, say so explicitly
-    and note that running the scan again will pick up where it left off
-    (already-seen listings are skipped automatically, so nothing needs to be
-    tracked between runs).
+    already_seen, backfilled, would_alert, scored}` stats the import script
+    printed. If the page cap was hit before reaching the last page, say so
+    explicitly and note that running the scan again will pick up where it
+    left off (already-seen, fully-populated listings are skipped
+    automatically, so nothing needs to be tracked between runs).

@@ -41,6 +41,18 @@ CREATE TABLE IF NOT EXISTS listing_reactions (
     UNIQUE(listing_id, user)
 );
 CREATE INDEX IF NOT EXISTS idx_listing_reactions_listing ON listing_reactions(listing_id);
+
+CREATE TABLE IF NOT EXISTS listing_category_ratings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    listing_id INTEGER NOT NULL REFERENCES listings(id),
+    user TEXT NOT NULL,
+    category TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    updated_at TEXT NOT NULL,
+    UNIQUE(listing_id, user, category)
+);
+CREATE INDEX IF NOT EXISTS idx_listing_category_ratings_listing
+    ON listing_category_ratings(listing_id);
 """
 
 # Columns added after the initial schema above - kept as a migration list
@@ -182,6 +194,50 @@ class ListingStore:
             ).fetchone()
             return row[0]
 
+    _BACKFILLABLE_COLUMNS = [
+        "address",
+        "neighborhood",
+        "price",
+        "beds",
+        "baths",
+        "sqft",
+        "listing_agent",
+        "photo_url",
+        "open_house_raw",
+        "open_house_date",
+        "available_date",
+    ]
+
+    def backfill_listing(self, url: str, fields: dict) -> bool:
+        """Fills in currently-empty columns on an already-saved listing from
+        a fresh scan of the same URL - never overwrites a column that
+        already has a value. Used to resume scanning listings that were
+        first saved without a photo/address (see needs_backfill_listings).
+        Returns True if anything was actually filled in."""
+        with self._conn() as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute("SELECT * FROM listings WHERE url = ?", (url,)).fetchone()
+            if row is None:
+                return False
+
+            set_clauses = []
+            params: list = []
+            for col in self._BACKFILLABLE_COLUMNS:
+                new_val = fields.get(col)
+                if new_val is not None and not row[col]:
+                    set_clauses.append(f"{col} = ?")
+                    params.append(new_val)
+
+            if not set_clauses:
+                return False
+            if "address" in fields and not row["address"] and fields.get("address") is not None:
+                set_clauses.append("normalized_address = ?")
+                params.append(normalize_address(fields["address"]))
+
+            params.append(url)
+            conn.execute(f"UPDATE listings SET {', '.join(set_clauses)} WHERE url = ?", params)
+            return True
+
     def set_rating(self, listing_id: int, user: str, rating: int) -> None:
         with self._conn() as conn:
             conn.execute(
@@ -227,6 +283,51 @@ class ListingStore:
                     listing_id,
                 ),
             )
+
+    def set_category_rating(self, listing_id: int, user: str, category: str, score: int) -> None:
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO listing_category_ratings
+                       (listing_id, user, category, score, updated_at)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(listing_id, user, category)
+                       DO UPDATE SET score = ?, updated_at = ?""",
+                (
+                    listing_id,
+                    user,
+                    category,
+                    score,
+                    datetime.now(UTC).isoformat(),
+                    score,
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+
+    def get_category_ratings_for_listing(self, listing_id: int) -> dict[str, dict[str, int]]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                """SELECT user, category, score
+                   FROM listing_category_ratings WHERE listing_id = ?""",
+                (listing_id,),
+            ).fetchall()
+        result: dict[str, dict[str, int]] = {}
+        for user, category, score in rows:
+            result.setdefault(user, {})[category] = score
+        return result
+
+    def needs_backfill_listings(self) -> list[dict]:
+        """Listings missing a photo or address - candidates for the next
+        browser scan to re-visit and backfill, rather than re-scraping
+        everything from scratch each time."""
+        with self._conn() as conn:
+            conn.row_factory = sqlite3.Row
+            rows = conn.execute(
+                """SELECT * FROM listings
+                   WHERE photo_url IS NULL OR photo_url = ''
+                      OR address IS NULL OR address = ''
+                   ORDER BY first_seen DESC"""
+            ).fetchall()
+        return [dict(row) for row in rows]
 
     def get_reactions_for_listing(self, listing_id: int) -> dict[str, dict]:
         with self._conn() as conn:

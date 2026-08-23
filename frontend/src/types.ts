@@ -27,4 +27,6 @@ export interface Listing {
   both_rating: number | null;
   label: string | null;
   rank?: number;
+  needs_backfill: boolean;
+  category_ratings: Record<string, Record<string, number>>;
 }

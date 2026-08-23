@@ -34,7 +34,13 @@ export const api = {
     }),
   setHidden: (id: number, hidden: boolean) =>
     request<{ ok: boolean }>(`/listings/${id}/hidden`, { method: "POST", body: JSON.stringify({ hidden }) }),
+  setCategoryRating: (id: number, category: string, score: number) =>
+    request<{ ok: boolean }>(`/listings/${id}/category-rating`, {
+      method: "POST",
+      body: JSON.stringify({ category, score }),
+    }),
   hidden: () => request<Listing[]>("/hidden"),
+  needsScan: () => request<Listing[]>("/needs-scan"),
   openHouses: (favoritesOnly: boolean) =>
     request<Listing[]>(`/open-houses?favorites_only=${favoritesOnly}`),
   neighborhoods: () => request<string[]>("/neighborhoods"),

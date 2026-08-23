@@ -6,6 +6,7 @@ import { Feed } from "./pages/Feed";
 import { Hidden } from "./pages/Hidden";
 import { Leaderboard } from "./pages/Leaderboard";
 import { ListingDetail } from "./pages/ListingDetail";
+import { NeedsScan } from "./pages/NeedsScan";
 import { OpenHouses } from "./pages/OpenHouses";
 import { WhoAmI } from "./pages/WhoAmI";
 
@@ -36,6 +37,7 @@ export default function App() {
               <Route path="/hidden" element={<Hidden user={user} />} />
               <Route path="/open-houses" element={<OpenHouses user={user} />} />
               <Route path="/leaderboard" element={<Leaderboard user={user} />} />
+              <Route path="/needs-scan" element={<NeedsScan user={user} />} />
             </>
           )}
         </Routes>

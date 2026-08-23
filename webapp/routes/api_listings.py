@@ -3,6 +3,7 @@ rating/comment/hidden actions."""
 
 from fastapi import APIRouter, Body, HTTPException, Request
 
+from ..categories import CATEGORY_KEYS
 from ..deps import get_current_user, get_store
 from ..feed_logic import enrich, filter_listings, sort_listings
 
@@ -51,7 +52,7 @@ def list_listings(
     listings = sort_listings(listings, sort)
 
     min_score_val = _parse_int(min_score)
-    if min_score_val is not None and sort != "leaderboard":
+    if min_score_val is not None and not sort.startswith("leaderboard"):
         key = "ai_score" if sort == "ai" else "both_rating"
         listings = [
             listing
@@ -97,12 +98,49 @@ def set_hidden(request: Request, listing_id: int, hidden: bool = Body(..., embed
     return {"ok": True}
 
 
+@router.post("/listings/{listing_id}/category-rating")
+def set_category_rating(
+    request: Request,
+    listing_id: int,
+    category: str = Body(...),
+    score: int = Body(...),
+):
+    user = _require_user(request)
+    if category not in CATEGORY_KEYS:
+        raise HTTPException(400, f"unknown category {category!r}")
+    if not 1 <= score <= 5:
+        raise HTTPException(400, "score must be 1-5")
+    store = get_store()
+    store.set_category_rating(listing_id, user, category, score)
+
+    # The overall star rating (used for sorting/leaderboards) follows the
+    # average of this user's category scores once they've rated any -
+    # category ratings are the detailed "why", the star rating stays the
+    # single number everything else already sorts/filters on.
+    user_categories = store.get_category_ratings_for_listing(listing_id).get(user, {})
+    if user_categories:
+        avg_rating = round(sum(user_categories.values()) / len(user_categories))
+        store.set_rating(listing_id, user, avg_rating)
+    return {"ok": True}
+
+
 @router.get("/hidden")
 def hidden_listings(request: Request):
     _require_user(request)
     store = get_store()
     listings = [listing for listing in store.all_listings(include_hidden=True) if listing["hidden"]]
     return enrich(listings, store)
+
+
+@router.get("/needs-scan")
+def needs_scan_listings(request: Request):
+    """Listings missing a photo or address - shown separately from the main
+    feed so incomplete rows don't clutter review, and used as the backfill
+    queue for the next browser scan."""
+    _require_user(request)
+    store = get_store()
+    listings = enrich(store.all_listings(include_hidden=True), store)
+    return [listing for listing in listings if listing["needs_backfill"]]
 
 
 @router.get("/neighborhoods")

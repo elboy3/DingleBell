@@ -17,6 +17,8 @@ def enrich(listings: list[dict], store: ListingStore) -> list[dict]:
         reactions = store.get_reactions_for_listing(listing["id"])
         listing["reactions"] = reactions
         listing.update(compute_rating_summary(reactions))
+        listing["category_ratings"] = store.get_category_ratings_for_listing(listing["id"])
+        listing["needs_backfill"] = not listing.get("photo_url") or not listing.get("address")
     return listings
 
 
@@ -41,8 +43,12 @@ def filter_listings(
     available_before: str | None = None,
     needs_review: str | None = None,
     viewer: str | None = None,
+    include_incomplete: bool = False,
 ) -> list[dict]:
     result = listings
+
+    if not include_incomplete:
+        result = [listing for listing in result if not listing.get("needs_backfill")]
 
     if neighborhood:
         result = [listing for listing in result if listing.get("neighborhood") == neighborhood]
@@ -84,19 +90,32 @@ def filter_listings(
     return result
 
 
+def _ranked(listings: list[dict], key) -> list[dict]:
+    listings = sorted(listings, key=key, reverse=True)
+    for rank, listing in enumerate(listings, start=1):
+        listing["rank"] = rank
+    return listings
+
+
 def sort_listings(listings: list[dict], sort: str) -> list[dict]:
-    if sort == "leaderboard":
+    if sort in ("leaderboard", "leaderboard_shared"):
         both_rated = [
             listing
             for listing in listings
             if listing["both_rating"] is not None and listing["label"] is None
         ]
-        both_rated.sort(
-            key=lambda listing: (-(listing["both_rating"] or 0), -(listing["ai_score"] or 0))
+        return _ranked(
+            both_rated, lambda listing: (listing["both_rating"] or 0, listing["ai_score"] or 0)
         )
-        for rank, listing in enumerate(both_rated, start=1):
-            listing["rank"] = rank
-        return both_rated
+
+    if sort == "leaderboard_ai":
+        scored = [listing for listing in listings if listing.get("ai_score") is not None]
+        return _ranked(scored, lambda listing: listing["ai_score"])
+
+    if sort in ("leaderboard_elliott", "leaderboard_madison"):
+        user = sort.removeprefix("leaderboard_")
+        rated = [listing for listing in listings if listing["ratings"].get(user) is not None]
+        return _ranked(rated, lambda listing: listing["ratings"][user])
 
     key = "ai_score" if sort == "ai" else "both_rating"
     return sorted(listings, key=lambda listing: (listing[key] is None, -(listing[key] or 0)))
