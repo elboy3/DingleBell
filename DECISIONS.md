@@ -303,3 +303,24 @@ to the local FastAPI API - so a plain headless Playwright browser
 relation to the user's real browser or its permissions) is the right
 tool for testing this app's own UI. Don't reach for browser-use to test
 things that don't need StreetEasy's authenticated session.
+
+### Airbnb-inspired visual redesign
+The React rewrite's first pass used generic/templated-looking styling
+("still looks very jinja"). Rather than invent a look from scratch, we
+picked a well-known app with a design language that fits the domain
+(browsing photo-forward real-estate listings) and deliberately mimicked
+its patterns: coral accent (`#ff385c`), warm neutral grays, large
+rounded corners, Nunito font, square photo-forward cards with info
+living in the card body instead of as photo overlays, a heart icon for
+favorite/hide instead of a text button, and a responsive CSS grid
+instead of a single stacked column. This was a user-directed choice
+(picked Airbnb from a short list of options) rather than an invented
+style, on the reasoning that copying a proven, well-tested design
+system beats guessing at "good design" from first principles.
+
+Implementation note: the address/URL fallback text in listing cards
+needs `overflow-wrap: anywhere` - long unbroken strings (URLs, in
+listings scanned before `address` parsing succeeded) will otherwise
+overflow the card's fixed width instead of wrapping, since flex items
+don't wrap unbreakable text by default. Found via an actual Playwright
+screenshot of the rendered feed, not by reading the CSS.

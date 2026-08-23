@@ -127,7 +127,11 @@ export function Feed({ user }: { user: string }) {
       ) : listings.length === 0 ? (
         <p className="empty">No listings match these filters.</p>
       ) : (
-        listings.map((l) => <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />)
+        <div className="feed-grid">
+          {listings.map((l) => (
+            <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />
+          ))}
+        </div>
       )}
     </div>
   );

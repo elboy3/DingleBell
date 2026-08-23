@@ -36,7 +36,11 @@ export function OpenHouses({ user }: { user: string }) {
       {listings.length === 0 ? (
         <p className="empty">No upcoming open houses{favoritesOnly ? " for your favorites" : ""}.</p>
       ) : (
-        listings.map((l) => <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />)
+        <div className="feed-grid">
+          {listings.map((l) => (
+            <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />
+          ))}
+        </div>
       )}
     </div>
   );

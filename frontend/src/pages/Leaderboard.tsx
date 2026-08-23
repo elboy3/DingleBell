@@ -28,7 +28,11 @@ export function Leaderboard({ user }: { user: string }) {
       {listings.length === 0 ? (
         <p className="empty">Nobody's rated the same listing yet - go rate some in the Feed.</p>
       ) : (
-        listings.map((l) => <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />)
+        <div className="feed-grid">
+          {listings.map((l) => (
+            <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />
+          ))}
+        </div>
       )}
     </div>
   );

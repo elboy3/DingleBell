@@ -28,7 +28,11 @@ export function Hidden({ user }: { user: string }) {
       {listings.length === 0 ? (
         <p className="empty">Nothing hidden right now.</p>
       ) : (
-        listings.map((l) => <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />)
+        <div className="feed-grid">
+          {listings.map((l) => (
+            <ListingCard key={l.id} listing={l} user={user} onRate={onRate} onHide={onHide} />
+          ))}
+        </div>
       )}
     </div>
   );

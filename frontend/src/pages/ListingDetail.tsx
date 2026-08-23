@@ -48,7 +48,9 @@ export function ListingDetail({ user }: { user: string }) {
         &larr; Back to feed
       </Link>
 
-      <ListingCard listing={listing} user={user} onRate={onRate} onHide={onHide} />
+      <div className="listing-detail-card">
+        <ListingCard listing={listing} user={user} onRate={onRate} onHide={onHide} />
+      </div>
 
       {mapQuery && (
         <div className="map-embed">
