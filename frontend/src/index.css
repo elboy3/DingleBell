@@ -136,8 +136,24 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
   transition: box-shadow 0.15s;
 }
 .listing-card:hover { box-shadow: var(--shadow-hover); }
-/* single-column contexts (listing detail) shouldn't stretch full grid width oddly */
-.listing-detail-card { max-width: 480px; }
+
+/* Listing detail: photo/card and map side by side on desktop, stacked on mobile */
+.detail-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+.listing-detail-card { max-width: 420px; }
+.detail-side { display: flex; flex-direction: column; gap: 1rem; position: sticky; top: 5.5rem; }
+.streeteasy-cta {
+  display: flex; align-items: center; justify-content: center;
+  background: var(--accent); color: #fff; text-decoration: none;
+  font-weight: 800; font-size: 1rem; padding: 0.85rem 1.25rem;
+  border-radius: 999px; box-shadow: var(--shadow);
+}
+.streeteasy-cta:hover { background: var(--accent-hover); }
+.external-icon { font-size: 0.8em; color: var(--text-muted); }
 
 .listing-photo-wrap {
   position: relative; background: #eceef2; border-radius: var(--radius); overflow: hidden;
@@ -282,12 +298,6 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
 }
 .comment-form button:hover { background: var(--accent-hover); }
 
-.original-link {
-  display: inline-block; margin-top: 1rem; color: var(--text-muted); text-decoration: none;
-  font-size: 0.88rem; font-weight: 700;
-}
-.original-link:hover { color: var(--text); }
-
 h3 { font-size: 1.05rem; font-weight: 800; margin: 1.5rem 0 0.6rem; }
 
 .empty, .empty-note { color: var(--text-muted); text-align: center; padding: 2.5rem 0; font-size: 0.95rem; font-weight: 600; }
@@ -302,6 +312,12 @@ h3 { font-size: 1.05rem; font-weight: 800; margin: 1.5rem 0 0.6rem; }
   border: none; background: var(--accent); color: #fff; cursor: pointer; transition: background 0.15s;
 }
 .whoami-button:hover { background: var(--accent-hover); }
+
+@media (max-width: 720px) {
+  .detail-layout { grid-template-columns: 1fr; }
+  .listing-detail-card { max-width: 480px; }
+  .detail-side { position: static; }
+}
 
 @media (max-width: 480px) {
   .topnav { gap: 1.1rem; padding: 0.85rem 1rem; }

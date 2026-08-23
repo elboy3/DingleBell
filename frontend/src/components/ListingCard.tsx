@@ -9,6 +9,11 @@ interface Props {
   user: string;
   onHide: (id: number, hidden: boolean) => void;
   onCategoryRate: (id: number, category: string, score: number) => void;
+  /** On the listing's own detail page, the title should open the original
+   * StreetEasy listing instead of linking to the page you're already on,
+   * and the "Details / comment" footer link (which would point right
+   * back here) is redundant and gets skipped. */
+  linkExternally?: boolean;
 }
 
 const NEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // "new" for 3 days after first_seen
@@ -29,7 +34,13 @@ function RatingReadout({ label, value }: { label: string; value: number | null }
   );
 }
 
-export function ListingCard({ listing, user, onHide, onCategoryRate }: Props) {
+export function ListingCard({
+  listing,
+  user,
+  onHide,
+  onCategoryRate,
+  linkExternally = false,
+}: Props) {
   const [showCategories, setShowCategories] = useState(false);
   const [dragX, setDragX] = useState(0);
   const draggingRef = useRef(false);
@@ -108,9 +119,20 @@ export function ListingCard({ listing, user, onHide, onCategoryRate }: Props) {
       </div>
       <div className="listing-body">
         <div className="listing-header">
-          <Link to={`/listings/${listing.id}`} className="listing-address">
-            {title}
-          </Link>
+          {linkExternally ? (
+            <a
+              href={listing.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="listing-address"
+            >
+              {title} <span className="external-icon">↗</span>
+            </a>
+          ) : (
+            <Link to={`/listings/${listing.id}`} className="listing-address">
+              {title}
+            </Link>
+          )}
         </div>
         <div className="header-tags">
           {isNew && <span className="new-badge">New</span>}
@@ -172,9 +194,11 @@ export function ListingCard({ listing, user, onHide, onCategoryRate }: Props) {
           </div>
         )}
 
-        <div className="card-actions">
-          <Link to={`/listings/${listing.id}`}>Details / comment →</Link>
-        </div>
+        {!linkExternally && (
+          <div className="card-actions">
+            <Link to={`/listings/${listing.id}`}>Details / comment →</Link>
+          </div>
+        )}
       </div>
     </div>
   );

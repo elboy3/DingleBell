@@ -46,13 +46,35 @@ export function ListingDetail({ user }: { user: string }) {
         &larr; Back to feed
       </Link>
 
-      <div className="listing-detail-card">
-        <ListingCard
-          listing={listing}
-          user={user}
-          onHide={onHide}
-          onCategoryRate={onCategoryRate}
-        />
+      <div className="detail-layout">
+        <div className="listing-detail-card">
+          <ListingCard
+            listing={listing}
+            user={user}
+            onHide={onHide}
+            onCategoryRate={onCategoryRate}
+            linkExternally
+          />
+        </div>
+
+        <div className="detail-side">
+          <a href={listing.url} target="_blank" rel="noopener noreferrer" className="streeteasy-cta">
+            View on StreetEasy ↗
+          </a>
+          {mapQuery && (
+            <div className="map-embed">
+              <iframe
+                width="100%"
+                height="320"
+                style={{ border: 0 }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
+                title="Map"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {(listing.category_ratings.elliott || listing.category_ratings.madison) && (
@@ -79,20 +101,6 @@ export function ListingDetail({ user }: { user: string }) {
         </div>
       )}
 
-      {mapQuery && (
-        <div className="map-embed">
-          <iframe
-            width="100%"
-            height="260"
-            style={{ border: 0 }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-            src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
-            title="Map"
-          />
-        </div>
-      )}
-
       <h3>Comments</h3>
       {Object.entries(listing.reactions).map(
         ([u, r]) =>
@@ -111,10 +119,6 @@ export function ListingDetail({ user }: { user: string }) {
         />
         <button onClick={saveComment}>Save comment</button>
       </div>
-
-      <a href={listing.url} target="_blank" rel="noopener noreferrer" className="original-link">
-        View original listing &rarr;
-      </a>
     </div>
   );
 }
