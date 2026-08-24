@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
 import { useCategoryRate } from "../hooks/useCategoryRate";
+import { mapEmbedUrl } from "../mapEmbed";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
@@ -34,8 +35,12 @@ export function Swipe({ user }: { user: string }) {
   };
 
   const onSwipe = async (id: number, direction: "left" | "right") => {
+    const draftToSave = commentDraft;
     decide(id);
-    await api.swipe(id, direction);
+    await Promise.all([
+      api.swipe(id, direction),
+      draftToSave ? api.setComment(id, draftToSave) : Promise.resolve(),
+    ]);
   };
   const onCategoryRate = useCategoryRate(() => {});
   const saveComment = async () => {
@@ -47,9 +52,7 @@ export function Swipe({ user }: { user: string }) {
 
   const remaining = queue.length;
   const otherComment = current?.reactions[OTHER_USER[user]]?.comment;
-  const mapQuery = current?.address
-    ? encodeURIComponent(`${current.address}, ${current.neighborhood || ""} Brooklyn, NY`)
-    : null;
+  const mapUrl = current?.address ? mapEmbedUrl(current.address, current.neighborhood) : null;
 
   return (
     <div className="swipe-page">
@@ -68,11 +71,12 @@ export function Swipe({ user }: { user: string }) {
                 onCategoryRate={onCategoryRate}
                 detailLevel="minimal"
                 swipeDecide
+                linkExternally
               />
             </div>
 
             <div className="detail-side">
-              {mapQuery && (
+              {mapUrl && (
                 <div className="map-embed">
                   <iframe
                     width="100%"
@@ -80,7 +84,7 @@ export function Swipe({ user }: { user: string }) {
                     style={{ border: 0 }}
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
+                    src={mapUrl}
                     title="Map"
                   />
                 </div>

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { CATEGORIES } from "../categories";
 import { useCategoryRate } from "../hooks/useCategoryRate";
+import { mapEmbedUrl } from "../mapEmbed";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
@@ -35,9 +36,7 @@ export function ListingDetail({ user }: { user: string }) {
 
   if (!listing) return <p className="empty">Loading...</p>;
 
-  const mapQuery = listing.address
-    ? encodeURIComponent(`${listing.address}, ${listing.neighborhood || ""} Brooklyn, NY`)
-    : null;
+  const mapUrl = listing.address ? mapEmbedUrl(listing.address, listing.neighborhood) : null;
 
   return (
     <div>
@@ -62,7 +61,7 @@ export function ListingDetail({ user }: { user: string }) {
           <a href={listing.url} target="_blank" rel="noopener noreferrer" className="streeteasy-cta">
             View on StreetEasy ↗
           </a>
-          {mapQuery && (
+          {mapUrl && (
             <div className="map-embed">
               <iframe
                 width="100%"
@@ -70,7 +69,7 @@ export function ListingDetail({ user }: { user: string }) {
                 style={{ border: 0 }}
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                src={`https://maps.google.com/maps?q=${mapQuery}&output=embed`}
+                src={mapUrl}
                 title="Map"
               />
             </div>
