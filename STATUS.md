@@ -131,17 +131,125 @@ Built and verified locally (all via Claude sessions):
       against the live inbox, 42 listings imported on the first run.
       AI scoring deliberately left NULL for these (no live session to
       judge a photo in an unattended run). See `DECISIONS.md`.
-- [ ] [CLAUDE] Zillow historical backfill - **built, not yet run for
-      real**. `.claude/skills/scan-zillow/SKILL.md` +
-      `apt_agent/zillow_scan/extract.js` + `apt_agent/zillow_scan_helpers.py`
-      exist and the card-parsing regex is verified against real captured
-      samples, but an actual scan attempt tripped Zillow's anti-bot wall
-      (5 rapid page loads, ~3s apart) before the skill's pacing was ever
-      applied - see `DECISIONS.md`. Next session should retry with real
-      20s-apart pacing, one `config.yaml` neighborhood at a time (now 7,
-      Williamsburg added). Not urgent - `zillow_email_import.py` already
-      covers everything going forward, this is only the pre-existing
-      backlog.
+      **2026-08-24: found and fixed a real silent-drop bug** in the
+      email-parsing regex - a "just listed" email's own featured
+      listing (not just bundled recommendations) was dropped whenever
+      it lacked a trailing "| Pets"-style amenity tag, and a "New
+      Rental Match" digest template's price line format broke matching
+      entirely. Backfilling the full mailbox with the fix recovered 42
+      previously-missed listings. Also confirmed the underlying Zillow
+      saved search is named **"Most of Brooklyn"** and genuinely spans
+      far beyond the 7 `config.yaml` neighborhoods (Greenpoint, Park
+      Slope, Bushwick, Bed-Stuy, DUMBO, Red Hook all seen in real
+      captured emails) - so new-listing coverage going forward is
+      broad by scope, and was only limited by the now-fixed parsing
+      bug. See `DECISIONS.md`.
+- [ ] [CLAUDE] Zillow historical backfill - **in progress, all 7
+      `config.yaml` neighborhoods now have at least one paced pass**
+      (148 total listings in `listings.db`, up from 87 across this and
+      the prior session). **Hit a real anti-bot block** requesting Fort
+      Greene again, even with correct 20s pacing, after 4 paced loads
+      that session (title: "Access to this page has been denied") -
+      stopped immediately per the established rule, didn't retry or
+      open a fresh browser identity. Confirmed *again* (see
+      `DECISIONS.md`) that Zillow's own pagination silently drops the
+      price/beds/baths filter state past page 1 - each neighborhood
+      pass is realistically "page 1 only," spread across neighborhoods
+      rather than paginating deep into one. StreetEasy backfill
+      deprioritized per user preference (2026-08-24: "I'm okay with
+      actually using all zillow, it has everything streeteasy has for
+      the most part") - not pursuing a `scan-streeteasy` pass unless
+      asked. Not urgent day-to-day either way - `zillow_email_import.py`
+      already covers everything going forward unattended; this is only
+      the pre-existing backlog.
+
+      **Coverage tracking (captured / Zillow's own reported total for
+      that filtered search, as of 2026-08-24, updated after each
+      session) - this table is the concrete answer to "how do we know
+      when we've gotten everything":**
+
+      | Neighborhood | Captured | Reported total | Coverage | Notes |
+      |---|---|---|---|---|
+      | Williamsburg | 27 | 221 | ~12% | up from 7 (~3%) in one re-scan with the new technique; still by far the biggest gap |
+      | Brooklyn Heights | 22 | 41 | ~54% | |
+      | Clinton Hill | 19 | 33 | ~58% | jumped from 6 (~18%) once switched to the `__NEXT_DATA__` extraction technique - the old "plateau" was a DOM-hydration-timing bug, not a hard cap, see DECISIONS.md |
+      | Fort Greene | 18 | ~29-49 (fluctuates, see note) | ~40-60% | |
+      | Prospect Heights | 17 | 35 | ~49% | |
+      | Cobble Hill | 15 | 34 | ~44% | this re-scan mostly re-confirmed existing data (10 of 11 backfilled, only 1 new) - may be close to what one paced load can see for this neighborhood |
+      | Boerum Hill | 11 | 47 | ~23% | |
+
+      All 7 neighborhoods have now been scanned at least once with the
+      `__NEXT_DATA__` technique (2026-08-24) - re-running the same
+      neighborhood again mostly backfills better data on existing rows
+      at this point (Cobble Hill: 10 of 11 results were already known).
+
+      **Tested and ruled out three separate techniques for pushing a
+      neighborhood toward 100%** (see DECISIONS.md for full detail on
+      each): price-band splitting (narrowing Boerum Hill's pool from 47
+      to 21 still returned only already-known listings), sort-order
+      changes (price-descending instead of newest-first - also zero
+      new listings), and scrolling (tested properly on the real
+      scrollable list container in both map views - never loaded more
+      cards, no pagination controls exist either). All three came back
+      negative in the same way, pointing at one root cause: Zillow
+      appears to select a **fixed subset of a neighborhood's pool for
+      an exact filtered query before sorting/serving it** - nothing
+      tested changes which listings land in that subset.
+
+      **Final conclusion: there is no known lever that reliably pushes
+      a single scan toward 100%.** The only thing that has actually
+      added new listings across this project's real sessions is time
+      passing between scans (market turnover changes what falls into
+      that fixed subset) - the practical path forward is periodic
+      re-scans of each neighborhood over the coming weeks, not a
+      smarter single query.
+
+      **2026-08-24: found and fixed a real "wrong photo" bug** - the
+      old DOM-scraping technique (`extract.js`) always grabbed a
+      listing's *last* photo instead of its first (Zillow's card DOM
+      renders exactly 3 images in [last, first, second] order for a
+      peek-ahead carousel; the first DOM match is always the last
+      photo). The current `__NEXT_DATA__` technique was unaffected.
+      Fixed `extract.js` for its fallback role, and backfill-corrected
+      56 already-imported listings using data already captured this
+      session - 18 older rows remain uncorrected (never resurfaced by
+      a later rescan), low priority since it's a photo-only issue. See
+      `DECISIONS.md`.
+
+      Zillow's own reported total for the same neighborhood/filter isn't
+      perfectly stable between checks (Fort Greene showed "89 Rentals" on
+      one load and "49 Rentals" on another, while the underlying
+      `categoryTotals.cat1.totalResultCount` said 29) - live market
+      turnover plus at least one inconsistent count Zillow itself
+      exposes, not a bug in our tracking. Treat the "reported total"
+      column as an approximate denominator, not a precise one.
+
+      **Extraction technique upgraded mid-backlog (2026-08-24)**: Zillow's
+      search-results pages embed the full structured result set (address,
+      price, beds, baths, real availability date, up to ~10-30 photo
+      keys per listing) in a `__NEXT_DATA__` script tag - reading that
+      JSON directly is now the primary technique (better data, and fixes
+      a real hydration-timing bug that was capping some neighborhoods at
+      far fewer cards than the DOM would eventually render). DOM-scraping
+      `extract.js` is demoted to a fallback. `scan-zillow/SKILL.md` needs
+      a rewrite to reflect this as the default procedure, not yet done.
+
+      **Two-part completion model** (this is the real answer, not just
+      the table): (1) *Going forward*, this is already effectively
+      solved - `zillow_email_import.py` catches every new Zillow listing
+      automatically within minutes, no browser/coverage-gap risk at all.
+      (2) *The historical backlog* (everything that existed before that
+      pipeline started) is what the table above tracks, and it has a
+      real technical ceiling - Zillow's page rendering and anti-bot
+      posture mean literal 100% isn't achievable through this technique.
+      Realistic target: get the 6 non-Williamsburg neighborhoods to
+      ~90%+ coverage (achievable in a handful more paced sessions,
+      especially if the price-slicing or hydration-timing fix in
+      `scan-zillow/SKILL.md` pans out), and treat Williamsburg as a
+      standing, never-quite-100% background effort given its size - new
+      Williamsburg listings still get caught automatically either way.
+      Update this table after each scan session so progress is visible
+      rather than a vague "done" feeling.
 
 Needs you (all [MANUAL] - real accounts/credentials/content only you can provide):
 - [ ] [MANUAL] Send reference photos or StreetEasy links (liked + disliked)

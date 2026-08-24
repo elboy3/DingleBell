@@ -266,58 +266,15 @@ pending plan.
 
 ## File map
 
-### Shared web app (current focus)
-| File | Purpose |
-|---|---|
-| `webapp/app.py` | FastAPI app instance, CORS, mounts all API routers |
-| `webapp/deps.py` | `get_store()`, `get_current_user()` - `KNOWN_USERS` itself lives in `ranking.py`, re-exported here |
-| `webapp/config.py` | Thin wrapper around `apt_agent.main.load_config()` |
-| `webapp/ranking.py` | `KNOWN_USERS`, `compute_rating_summary()` - shared min-of-both-ratings logic |
-| `webapp/feed_logic.py` | `enrich()`, `match_status()`, `swipe_queue_for_user()`, `filter_listings()`/`sort_listings()` (Leaderboard only) |
-| `webapp/categories.py` | The six rating categories (light/kitchen/location/vibe/coziness/space) |
-| `webapp/scoring.py` | Claude vision taste-match scoring, graceful degradation (secondary/fallback path) |
-| `webapp/rescore.py` | `python -m webapp.rescore` - manual backfill for stale/missing AI scores |
-| `webapp/routes/api_listings.py` | `/swipe-queue`, `/inbox`, `/passed`, `/off-market`, `/needs-scan`, `/listings` (Leaderboard only), `/listings/{id}`, and the comment/hidden/swipe/category-rating actions |
-| `webapp/routes/api_identity.py` | `GET`/`POST /api/whoami` - cookie-based identity |
-| `frontend/src/App.tsx` | React Router setup, identity gate |
-| `frontend/src/api.ts` | Fetch client - **must point at `localhost:8000`, not `127.0.0.1:8000`** (cookie hostname match) |
-| `frontend/src/pages/*.tsx` | Swipe (home), ListingDetail, Matches, Leaderboard, Passed, NeedsScan, WhoAmI |
-| `frontend/src/components/*.tsx` | `ListingCard` (detailLevel/swipeDecide/linkExternally/onDisqualify props), `Stars`, `NavBar` |
-| `frontend/src/hooks/useCategoryRate.ts` | Shared category-rating-then-reload handler, used by every list/detail page |
-| `frontend/src/categories.ts` | Mirrors `webapp/categories.py`'s category list (kept in sync by hand) |
-| `frontend/vite.config.ts` | Dev server pinned to port 5175 (not the 5173 default - avoids colliding with other local projects) |
-| `apt_agent/browser_scan/extract.js` | StreetEasy DOM-extraction script, run via `browser-use`'s `js()` |
-| `apt_agent/browser_scan_helpers.py` | StreetEasy field parsing, batch dedup, pacing/page-cap constants (also reused by the Zillow scan below) |
-| `apt_agent/browser_import.py` | Persists a scan's output into `listings.db`, wires in AI scoring - shared by both scan skills |
-| `.claude/skills/scan-streeteasy/SKILL.md` | Session procedure for the StreetEasy scan - the primary StreetEasy ingestion path |
-| `apt_agent/zillow_email_import.py` | Automated, unattended Zillow ingestion via instant-update emails - the primary Zillow ingestion path, runs on the poll cron |
-| `apt_agent/zillow_scan/extract.js`, `apt_agent/zillow_scan_helpers.py` | Zillow SRP DOM-extraction + field parsing - **backfill only**, see below |
-| `.claude/skills/scan-zillow/SKILL.md` | Session procedure for backfilling pre-email-pipeline Zillow listings - not the day-to-day path |
-| `taste_profile.md` | Exists, **preliminary draft** - 3 liked examples, no disliked ones yet |
-
-### Email pipeline (deprioritized, still running)
-| File | Purpose |
-|---|---|
-| `apt_agent/gmail_auth.py` | One-time OAuth setup, produces `token.json` |
-| `apt_agent/gmail_ingest.py` | Polls Gmail, extracts listing URLs + snippets from alert emails |
-| `apt_agent/listing_parser.py` | Email-snippet field extraction (page-fetch path unused, kept for reference) |
-| `apt_agent/main.py` | Orchestrates a normal run or a `--dry-run` test |
-| `apt_agent/notify.py` | Builds and sends alert/heartbeat/test emails via Gmail API |
-| `apt_agent/notify_failure.py` | Sends a "run failed" email, wired to `if: failure()` in the workflow |
-| `apt_agent/heartbeat.py` | Daily "agent is alive" summary email |
-| `apt_agent/check_setup.py` | `python -m apt_agent.check_setup` - verifies real local setup state |
-| `.github/workflows/poll.yml`, `heartbeat.yml` | Scheduled workflows |
-
-### Shared
-| File | Purpose |
-|---|---|
-| `apt_agent/store.py` | The one `ListingStore` - schema, dedup, reactions, hide, AI score, all three consumers |
-| `apt_agent/filters.py` | Hard filters: price, beds/baths, move-in window |
-| `config.yaml` | User-owned filters/settings (non-secret) + `scoring:` section |
-| `listings.db` | Committed to the repo (still true post-pivot for the email side; the webapp will move to Turso once hosted) |
-| `pyproject.toml` | `[tool.ruff]`, `[tool.poe.tasks]` - see "Dev tooling" below |
-| `requirements.txt` | Runtime deps (what GitHub Actions and the planned Dockerfile install) |
-| `requirements-dev.txt` | `ruff`, `ty`, `poethepoet` - not installed by CI |
+See [`wiki/index.md`](wiki/index.md) for the full, current, cross-linked
+file map - one page per file/module plus concept pages for cross-cutting
+themes (the two pivots, the blind-swipe model, AI scoring, Zillow ingestion
+evolution, etc.). Update `wiki/`, not a file map here, when files change -
+see `wiki/README.md` for the maintenance workflow. This section used to
+contain its own file-by-file table; that table drifted out of date in
+several places (e.g. `/inbox` had already been renamed to `/matches`) and
+was replaced with this pointer specifically so there's only one place to
+keep current, not two.
 
 ## Dev tooling
 
@@ -388,3 +345,6 @@ pending plan.
   precedent for how scope changes should happen: driven by the user's
   own stated problem, discussed and confirmed before building, not
   assumed.
+- When a file/module changes meaningfully, update its page in `wiki/`
+  (not a file map in this doc - see "File map" above) and append to
+  `wiki/log.md`. `wiki/README.md` has the full maintenance workflow.

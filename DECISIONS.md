@@ -450,6 +450,39 @@ established norm): 42 new listings imported on the first real run, 41
 of 42 with complete photo+address data, the 1 gap falling gracefully
 into the existing Needs Scan queue exactly as designed.
 
+**Found and fixed a real silent-drop bug in `_BLOCK_RE` (2026-08-24),**
+while investigating whether "all new Brooklyn listings" actually make
+it into the app. Two real email variants failed to parse entirely,
+discovered by pulling and testing actual captured emails (not
+guessed): (1) a "just listed" email's own *featured* listing - the
+literal reason the email was sent - had no trailing "| Pets"-style
+amenity tag on its bed/bath/sqft line, which the regex required
+unconditionally; bundled "you might also like" entries in the same
+email happened to all have one, so this wasn't a rare edge case, it
+specifically dropped the primary listing type this pipeline exists to
+catch. (2) A "New Rental Match" digest template's price line has extra
+trailing text (`$4,325/mo | Total monthly price` instead of
+`$4,325/mo`), breaking the match immediately. Both are now optional in
+the regex. Backfilling the full mailbox history through the fixed
+parser recovered **42 genuinely new listings** that had been silently
+dropped since the pipeline went live - confirms this wasn't a
+theoretical fix. (A third thing found while testing wasn't a bug: two
+sample "New Rental Match" emails whose only listing was a
+building/complex page with no individual zpid, e.g. "One Blue Slip" -
+correctly excluded already, same reasoning as the SRP scan's
+building-aggregator filtering and the existing "premium ad in a
+different city" exclusion - not every parse failure was a bug.)
+
+**Also confirmed the underlying Zillow saved search itself is
+genuinely broad**, not scoped to just the 7 `config.yaml`
+neighborhoods - it's named **"Most of Brooklyn"** (visible in each
+alert email's subject/body), and real captured addresses span
+Greenpoint, Park Slope/Gowanus, Bushwick, Bed-Stuy/Crown Heights,
+DUMBO/Downtown Brooklyn, and Red Hook, well outside the 7 configured
+neighborhoods. So "new Brooklyn listings go in automatically" was
+already true in *scope* - the gap was purely the parsing bug above,
+not a narrower-than-expected search.
+
 ### Zillow historical backfill: a real anti-bot trip, and a scan skill built around it
 The automated email import only catches new listings going forward -
 it can't retroactively see whatever was already on the market before
@@ -484,13 +517,204 @@ Two things learned by actually trying it, not by guessing:
    dodge a block would cross into evasion. Just waited and left it for
    a future session with correct pacing from the start.
 
+**Found and fixed the actual root cause of a "wrong photo" bug
+(2026-08-24)**, prompted by the user noticing the app sometimes shows
+what looks like Zillow's *last* photo instead of the first. Confirmed
+for real, not guessed: every search-card renders exactly 3
+`<img src*="zillowstatic">` tags, always in this order - **[last
+photo, first/primary photo, second photo]** - an infinite-loop
+carousel's prev/current/next peek slides. `extract.js`'s
+`card.querySelector('img[src*="zillowstatic"]')` (first DOM match)
+therefore grabbed the *last* photo 100% of the time (8/8 real listings
+checked, cross-verified against each listing's own
+`carouselPhotosComposable.photoData` order) - a systematic,
+deterministic bug in the old DOM-scraping technique, not a rare Zillow
+inconsistency. Fixed by taking the second matching `<img>` instead of
+the first. The current primary technique (`__NEXT_DATA__`/`imgSrc`)
+was separately checked across 20 real listings and was never affected
+- `imgSrc` matched `photoData[0]` every time - so this bug was already
+fully retired by the technique switch; fixing `extract.js` closes the
+loop for its fallback role. Backfill-corrected 56 already-imported
+listings whose `photo_url` was confirmed wrong, using `__NEXT_DATA__`
+data already captured this session (no new page loads needed) - 18
+older rows that were never re-surfaced by a later rescan remain
+uncorrected; fixing those needs an individual page visit each, not
+worth the anti-bot budget right now for a photo-only issue.
+
 Formalized as `.claude/skills/scan-zillow/SKILL.md` +
 `apt_agent/zillow_scan/extract.js` + `apt_agent/zillow_scan_helpers.py`
 (card-text parsing regex validated offline against 5 real captured
 samples before ever touching the module, same "verify against real data"
 discipline as everything else here) - explicitly scoped as a backfill-only
 tool, not the day-to-day Zillow path, to avoid confusion with
-`zillow_email_import.py`. Not yet run end-to-end for real (the live trip
-above happened while researching the extraction approach, before the
-skill file existed) - next session should be the first real test of the
-paced version.
+`zillow_email_import.py`.
+
+**Since run for real, multiple times, with correct pacing - and a third
+thing learned that the above two didn't catch:**
+
+3. **Zillow's pagination silently drops the search filter state.**
+   Navigating to `{page}_p/` with a hand-built `searchQueryState` (no
+   `regionSelection`/resolved `mapBounds`) doesn't reliably paginate -
+   sometimes it re-serves page 1's results, and sometimes (confirmed
+   scanning Brooklyn Heights) it redirects to a canonicalized URL with
+   the `searchQueryState` query param dropped entirely, silently
+   reverting to Zillow's default *unfiltered* listing set (title's "N
+   Rentals" count jumped from 41 to 51 - the filtered vs. unfiltered
+   count for the same neighborhood). Mitigated by treating anything
+   past page 1 as untrusted for price/beds/baths and re-filtering it in
+   Python against `config.yaml`'s bounds before import (5 of Brooklyn
+   Heights' page-2 cards were below `price_min` and got dropped this
+   way) - not by trying to fix the pagination itself, which isn't worth
+   the anti-bot-pacing cost for a plateau that nets only a few
+   genuinely-new listings per extra page. **Practical conclusion: budget
+   each paced session as roughly one page per neighborhood, spread
+   across more neighborhoods, rather than paginating deep into one.**
+   First real multi-neighborhood run (2026-08-24, one session, 5 paced
+   page loads total - the `MAX_PAGES_PER_SESSION` cap): Brooklyn
+   Heights (14 new), Cobble Hill (14 new), Clinton Hill (5 new, only 6
+   cards rendered that pass - worth a follow-up), Prospect Heights (14
+   new).
+
+4. **The neighborhood-slug guess isn't always right, and a wrong guess
+   fails silently (no error, just the wrong neighborhood's data).**
+   `williamsburg-brooklyn-ny` resolves to a different, adjacent
+   neighborhood ("East Williamsburg") - the correct slug is
+   `williamsburg-new-york-ny`. Caught only by checking `page_info()`'s
+   title against the intended neighborhood before extracting, exactly
+   as the skill instructs - a reminder that this check isn't optional
+   even for neighborhoods that seem unambiguous.
+5. **The Clinton Hill query specifically plateaus at 6 rendered cards**,
+   confirmed by retrying it in a later session (same 6 URLs both times,
+   out of 33 total) - not a one-off virtualization glitch like the
+   general 5-card map-visible issue above, since `isMapVisible: false`
+   was already set both times. Unresolved; a different technique
+   (scrolling, a different sort order, or the map-visible layout after
+   all) would need to be tried, not just a re-run.
+6. **A real anti-bot block recurred** (2026-08-24, second session of
+   that day): "Access to this page has been denied" on a Fort Greene
+   request, after 4 paced (20s-apart) page loads across Williamsburg/
+   Boerum Hill/Clinton Hill that session. Pacing alone doesn't
+   guarantee immunity every time - stopped immediately, did not retry
+   or open a fresh browser identity, left it for a future session, per
+   the same non-negotiable rule as every previous block this project
+   has hit. The user was able to clear the block themselves (they can
+   see the real browser this drives) - resumed once they confirmed it,
+   same legitimate-access reasoning as always since it's still their
+   own authenticated session, not a fresh identity spun up to dodge it.
+
+7. **Found a much better extraction source: Zillow's own `__NEXT_DATA__`
+   script tag already embeds the full, structured search-results JSON**
+   (`props.pageProps.searchPageState.cat1.searchResults.listResults`) -
+   the same data the page's React app hydrates from, present on every
+   search-results page load regardless of `isMapVisible`. This is a
+   strict upgrade over DOM-scraping `article.property-card` text:
+   - **Structured fields**, not squished text needing a fragile regex -
+     `address`/`unformattedPrice`/`beds`/`baths`/`availabilityDate`/
+     `brokerName` come pre-parsed, and `availabilityDate` (a real move-in
+     date) wasn't extractable from the DOM cards at all before this.
+   - **No hydration-timing race** - it's in the server-rendered HTML at
+     initial load, not populated by client-side JS after the fact, which
+     likely explains the 6-18 card count variance the DOM approach saw
+     (see point 3) - a same-session Clinton Hill re-test with this
+     technique is the first real check of that theory.
+   - **Each result already carries up to 10-30 photo keys**
+     (`carouselPhotosComposable.photoData`, combined with
+     `carouselPhotosComposable.baseUrl`'s `{photoKey}` template) - the
+     *entire* photo gallery, not just one thumbnail. This directly
+     reopens the multi-photo feature the user asked about earlier this
+     project and was told to drop (2026-08-24) because getting all
+     photos seemed to need a separate per-listing page visit - it
+     doesn't, it's already sitting in data this scan loads anyway. Not
+     built yet, flagged back to the user, needs their go-ahead given
+     they explicitly deprioritized it once already.
+   - **Still capped at roughly one page's worth of results per load**
+     (18 for the first Fort Greene check, against a
+     `categoryTotals.cat1.totalResultCount` of 29) - this technique
+     fixes data *quality* and *reliability* per page, not the
+     underlying "how do we see the rest of a large neighborhood"
+     problem by itself. `mapResults` (which might hold every pin
+     regardless of list pagination) was empty even with
+     `isMapVisible: true` - appears to populate via a later
+     client-side XHR that `wait_for_load()` doesn't wait for, not from
+     the initial payload - unresolved, would need active
+     waiting/polling to test further.
+   - **Confirmed the hydration-timing-race hypothesis directly**: a
+     same-day, same-query Clinton Hill re-test using `__NEXT_DATA__`
+     returned **26 results, versus 6 from DOM-scraping the exact same
+     query earlier that day** - the "6-card plateau" was never a hard
+     cap, it was `extract.js` reading the DOM before the client had
+     finished hydrating the full first page. `__NEXT_DATA__` is
+     server-rendered at initial load, so it doesn't have this problem.
+     `scan-zillow/SKILL.md` should be updated to make `__NEXT_DATA__`
+     parsing the primary extraction technique, with `extract.js`/DOM
+     scraping demoted to a fallback if `__NEXT_DATA__` is ever absent
+     or restructured.
+   - **Hit another real anti-bot block** on Williamsburg
+     (2026-08-24, third session of the day) after only 3 successful
+     page loads that session (2x Fort Greene + Clinton Hill) - stopped
+     immediately again, same rule as every prior block. Blocks appear
+     to cluster around the 3rd-5th paced load regardless of technique
+     used to read the page afterward - the anti-bot wall is reacting to
+     navigation frequency, not to how the page is parsed once loaded,
+     which makes sense since parsing happens entirely client-side after
+     the page has already been served.
+   - Real listResults entries include some **"relaxed"/building-
+     aggregator cards** (a lat/long string standing in for `zpid`, a
+     relative `/b/...` or `/apartments/...` URL, no price/beds/baths) -
+     these are building-level pages, not individual units, and don't
+     fit the per-listing swipe model - filtered out during import
+     rather than treated as `needs_backfill`.
+
+8. **Tested price-band splitting as a way to push a neighborhood's
+   coverage toward 100% (2026-08-24) - negative result, not a partial
+   win.** Narrowing Boerum Hill's price filter from $5000-10000 (47
+   total) to $5000-6500 (21 total, per `categoryTotals`) still only
+   returned 13 results, and **all 13 were listings already captured**
+   by the earlier broad-range scan. The batch Zillow hands back isn't
+   "everything under some size cap" - it looks like a fixed-size
+   top-slice of the `sort: days` (newest-first) ordering, largely
+   independent of how narrow the price filter is, so narrowing price
+   mostly just re-confirms the same recent listings with a smaller
+   denominator attached rather than surfacing different ones. **Don't
+   reach for price-slicing as the fix without re-verifying this** - it
+   didn't work in this one real test.
+   **Also tested changing sort order** (`sort: {"value": "priceD"}`
+   instead of `"days"`) on a later, unblocked retry - also negative.
+   All 12 individual listings returned were already-known ones; zero
+   new. Combined with the price-band result, this points at a specific
+   mechanism: **Zillow appears to select a fixed subset of the pool for
+   an exact filtered query first, then sort *that* subset** by whatever
+   `sort` value was requested - changing sort just reorders the same
+   ~16-18 already-selected listings, it doesn't change which ones get
+   selected. Neither lever can get past that selection step.
+
+   **Also tested the user's own observation that scrolling reveals
+   more** (2026-08-24) - found and scrolled the actual scrollable
+   element (`#search-page-list-container`, not `window`/`document.body`,
+   which never scrolls at all on this page) with real scroll-position
+   changes and dispatched `scroll` events, in both `isMapVisible: true`
+   and `false`, waiting after each step. Card count stayed fixed (18)
+   all the way to the true bottom of the container, where the DOM shows
+   the page footer, not a loading spinner. No pagination controls exist
+   in the DOM either. Conclusion: for this page/query, there is no
+   client-side lazy-load or "next page" UI to trigger - the batch is
+   fixed at initial load, independent of user interaction.
+
+   **Net result after three real tests (price-band split, sort-order
+   change, scroll): no working lever found to push a single query
+   toward 100%.** All three came back negative, and the price/sort
+   results both point at the same root cause (a fixed pre-sort subset
+   selection this project has no visibility into or control over). The
+   only thing that has actually produced new listings across sessions
+   is **re-running the same query after real time has passed** -
+   genuine market turnover changes which listings fall into that fixed
+   selection, which is different from any of the three techniques
+   above. Coverage now looks like it improves gradually over calendar
+   time via repeated scans, not through a cleverer single query.
+9. **A third real anti-bot block** (2026-08-24, fourth session of the
+   day) hit on only the *second* paced load of that session (the sort-
+   order test) - faster than prior blocks, which had taken 3-5 loads.
+   Suggests the wall may be sensitive to cumulative same-day activity
+   across sessions, not just a fresh per-session counter - worth
+   spacing scan sessions further apart across a day, not just pacing
+   within one. Stopped immediately, no retry, same rule as always.
