@@ -286,10 +286,13 @@ pending plan.
 | `frontend/src/hooks/useCategoryRate.ts` | Shared category-rating-then-reload handler, used by every list/detail page |
 | `frontend/src/categories.ts` | Mirrors `webapp/categories.py`'s category list (kept in sync by hand) |
 | `frontend/vite.config.ts` | Dev server pinned to port 5175 (not the 5173 default - avoids colliding with other local projects) |
-| `apt_agent/browser_scan/extract.js` | DOM-extraction script, run via `browser-use`'s `js()` |
-| `apt_agent/browser_scan_helpers.py` | Field parsing, batch dedup, pacing/page-cap constants |
-| `apt_agent/browser_import.py` | Persists a scan's output into `listings.db`, wires in AI scoring |
-| `.claude/skills/scan-streeteasy/SKILL.md` | The actual session procedure for running a scan |
+| `apt_agent/browser_scan/extract.js` | StreetEasy DOM-extraction script, run via `browser-use`'s `js()` |
+| `apt_agent/browser_scan_helpers.py` | StreetEasy field parsing, batch dedup, pacing/page-cap constants (also reused by the Zillow scan below) |
+| `apt_agent/browser_import.py` | Persists a scan's output into `listings.db`, wires in AI scoring - shared by both scan skills |
+| `.claude/skills/scan-streeteasy/SKILL.md` | Session procedure for the StreetEasy scan - the primary StreetEasy ingestion path |
+| `apt_agent/zillow_email_import.py` | Automated, unattended Zillow ingestion via instant-update emails - the primary Zillow ingestion path, runs on the poll cron |
+| `apt_agent/zillow_scan/extract.js`, `apt_agent/zillow_scan_helpers.py` | Zillow SRP DOM-extraction + field parsing - **backfill only**, see below |
+| `.claude/skills/scan-zillow/SKILL.md` | Session procedure for backfilling pre-email-pipeline Zillow listings - not the day-to-day path |
 | `taste_profile.md` | Exists, **preliminary draft** - 3 liked examples, no disliked ones yet |
 
 ### Email pipeline (deprioritized, still running)

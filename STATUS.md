@@ -131,6 +131,17 @@ Built and verified locally (all via Claude sessions):
       against the live inbox, 42 listings imported on the first run.
       AI scoring deliberately left NULL for these (no live session to
       judge a photo in an unattended run). See `DECISIONS.md`.
+- [ ] [CLAUDE] Zillow historical backfill - **built, not yet run for
+      real**. `.claude/skills/scan-zillow/SKILL.md` +
+      `apt_agent/zillow_scan/extract.js` + `apt_agent/zillow_scan_helpers.py`
+      exist and the card-parsing regex is verified against real captured
+      samples, but an actual scan attempt tripped Zillow's anti-bot wall
+      (5 rapid page loads, ~3s apart) before the skill's pacing was ever
+      applied - see `DECISIONS.md`. Next session should retry with real
+      20s-apart pacing, one `config.yaml` neighborhood at a time (now 7,
+      Williamsburg added). Not urgent - `zillow_email_import.py` already
+      covers everything going forward, this is only the pre-existing
+      backlog.
 
 Needs you (all [MANUAL] - real accounts/credentials/content only you can provide):
 - [ ] [MANUAL] Send reference photos or StreetEasy links (liked + disliked)

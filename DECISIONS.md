@@ -449,3 +449,48 @@ Verified for real against the live inbox before considering this done
 established norm): 42 new listings imported on the first real run, 41
 of 42 with complete photo+address data, the 1 gap falling gracefully
 into the existing Needs Scan queue exactly as designed.
+
+### Zillow historical backfill: a real anti-bot trip, and a scan skill built around it
+The automated email import only catches new listings going forward -
+it can't retroactively see whatever was already on the market before
+it existed, since Zillow doesn't resend old alerts. Backfilling that
+needs the same authenticated-browser technique as the StreetEasy scan.
+
+Two things learned by actually trying it, not by guessing:
+
+1. **Zillow's search-results list is virtualized and only renders
+   ~5 cards into the DOM at a time when the map panel is visible** -
+   scripted `scrollTop` changes and synthetic CDP wheel events didn't
+   reliably force it to render more in initial testing. Toggling
+   `isMapVisible: false` in the URL's `searchQueryState` switches to a
+   full-width list layout that renders ~11-18 cards up front with zero
+   scrolling needed - the difference between "workable per-page
+   extraction" and "not."
+2. **Zillow's anti-bot wall tripped faster than StreetEasy's did** - 5
+   page loads only ~3 seconds apart (testing per-neighborhood
+   pagination) hit "Access to this page has been denied," versus
+   StreetEasy's wall tripping on page 2 of a 13-load rapid loop. Same
+   mitigation applies: pace at `PAGE_PACING_SECONDS` (20s), cap at
+   `MAX_PAGES_PER_SESSION` - reused directly from
+   `apt_agent/browser_scan_helpers.py` rather than re-tuned per-site,
+   since both walls behave the same way (fast loop trips it, paced
+   loop reportedly doesn't - not yet re-verified end-to-end with real
+   pacing, since the trip happened before pacing was applied).
+   Deliberately did **not** try opening a new tab or a fresh browser
+   identity to route around the block once hit - the whole reason this
+   technique is legitimate is that it's the user's own authenticated
+   browser loading a page they're entitled to see, not automated
+   evasion, and deliberately spinning up a new identity specifically to
+   dodge a block would cross into evasion. Just waited and left it for
+   a future session with correct pacing from the start.
+
+Formalized as `.claude/skills/scan-zillow/SKILL.md` +
+`apt_agent/zillow_scan/extract.js` + `apt_agent/zillow_scan_helpers.py`
+(card-text parsing regex validated offline against 5 real captured
+samples before ever touching the module, same "verify against real data"
+discipline as everything else here) - explicitly scoped as a backfill-only
+tool, not the day-to-day Zillow path, to avoid confusion with
+`zillow_email_import.py`. Not yet run end-to-end for real (the live trip
+above happened while researching the extraction approach, before the
+skill file existed) - next session should be the first real test of the
+paced version.
