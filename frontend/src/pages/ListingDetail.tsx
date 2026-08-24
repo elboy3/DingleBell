@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { CATEGORIES } from "../categories";
 import type { Listing } from "../types";
@@ -7,6 +7,7 @@ import { ListingCard } from "../components/ListingCard";
 
 export function ListingDetail({ user }: { user: string }) {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [listing, setListing] = useState<Listing | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
 
@@ -21,10 +22,6 @@ export function ListingDetail({ user }: { user: string }) {
     load();
   }, [id]);
 
-  const onHide = async (listingId: number, hidden: boolean) => {
-    await api.setHidden(listingId, hidden);
-    load();
-  };
   const onCategoryRate = async (listingId: number, category: string, score: number) => {
     await api.setCategoryRating(listingId, category, score);
     load();
@@ -42,17 +39,17 @@ export function ListingDetail({ user }: { user: string }) {
 
   return (
     <div>
-      <Link to="/" className="back-link">
-        &larr; Back to feed
-      </Link>
+      <button type="button" onClick={() => navigate(-1)} className="back-link">
+        &larr; Back
+      </button>
 
       <div className="detail-layout">
         <div className="listing-detail-card">
           <ListingCard
             listing={listing}
             user={user}
-            onHide={onHide}
             onCategoryRate={onCategoryRate}
+            detailLevel="full"
             linkExternally
           />
         </div>

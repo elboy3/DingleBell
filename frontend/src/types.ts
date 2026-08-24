@@ -22,6 +22,9 @@ export interface Listing {
   ai_reasoning: string | null;
   first_seen: string;
   hidden: number;
+  hidden_reason: string | null;
+  swipes: Record<string, string>;
+  match_status: "pending" | "match" | "miss";
   reactions: Record<string, Reaction>;
   ratings: { elliott: number | null; madison: number | null };
   both_rating: number | null;

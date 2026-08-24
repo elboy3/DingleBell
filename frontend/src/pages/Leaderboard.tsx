@@ -7,7 +7,7 @@ const TABS: { key: string; label: string; empty: string }[] = [
   {
     key: "leaderboard_shared",
     label: "Shared",
-    empty: "Nobody's rated the same listing yet - go rate some in the Feed.",
+    empty: "Nobody's rated a match yet - go rate some in the Inbox.",
   },
   { key: "leaderboard_elliott", label: "Elliott", empty: "Elliott hasn't rated anything yet." },
   { key: "leaderboard_madison", label: "Madison", empty: "Madison hasn't rated anything yet." },
@@ -22,18 +22,19 @@ export function Leaderboard({ user }: { user: string }) {
   const [tab, setTab] = useState(TABS[0].key);
   const [listings, setListings] = useState<Listing[]>([]);
 
-  const load = async (sort: string) => setListings(await api.listings({ sort }));
+  const load = async (sort: string) =>
+    setListings(await api.listings({ sort, only_matched: "true" }));
   useEffect(() => {
     load(tab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  const onHide = async (id: number, hidden: boolean) => {
-    await api.setHidden(id, hidden);
-    load(tab);
-  };
   const onCategoryRate = async (id: number, category: string, score: number) => {
     await api.setCategoryRating(id, category, score);
+    load(tab);
+  };
+  const onDisqualify = async (id: number) => {
+    await api.setHidden(id, true, "off_market");
     load(tab);
   };
 
@@ -69,8 +70,8 @@ export function Leaderboard({ user }: { user: string }) {
               key={l.id}
               listing={l}
               user={user}
-              onHide={onHide}
               onCategoryRate={onCategoryRate}
+              onDisqualify={onDisqualify}
             />
           ))}
         </div>

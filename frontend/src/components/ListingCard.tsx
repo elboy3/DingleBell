@@ -4,20 +4,38 @@ import { CATEGORIES } from "../categories";
 import type { Listing } from "../types";
 import { Stars } from "./Stars";
 
+type DetailLevel = "minimal" | "summary" | "full";
+type SwipeDirection = "left" | "right";
+
 interface Props {
   listing: Listing;
   user: string;
-  onHide: (id: number, hidden: boolean) => void;
   onCategoryRate: (id: number, category: string, score: number) => void;
+  /** minimal: the Swipe page - photo/price/facts/AI score only, no ratings
+   * or category detail, so a fast yes/no decision isn't cluttered.
+   * summary (default): Inbox/Passed/Needs Scan/Leaderboard grids - adds
+   * the two people's overall rating, but still no category panel/comments.
+   * full: the listing's own detail page - everything, including the
+   * category-rating panel (the only place it's editable). */
+  detailLevel?: DetailLevel;
   /** On the listing's own detail page, the title should open the original
    * StreetEasy listing instead of linking to the page you're already on,
    * and the "Details / comment" footer link (which would point right
    * back here) is redundant and gets skipped. */
   linkExternally?: boolean;
+  /** Swipe page only: big Pass/Interested buttons plus a bidirectional drag
+   * gesture. Swiping is personal and permanent - there's no "unhide" once
+   * you've decided, unlike the old shared-hide model, so this card renders
+   * no hide/unhide affordance anywhere else. */
+  swipeDecide?: boolean;
+  onSwipe?: (id: number, direction: SwipeDirection) => void;
+  /** Leaderboard only: disqualify a matched listing (e.g. it went off the
+   * market) - a shared, reversible action, distinct from a personal swipe. */
+  onDisqualify?: (id: number) => void;
 }
 
 const NEW_WINDOW_MS = 3 * 24 * 60 * 60 * 1000; // "new" for 3 days after first_seen
-const SWIPE_THRESHOLD = 90; // px of horizontal drag before a release counts as "pass"
+const SWIPE_THRESHOLD = 90; // px of horizontal drag before a release commits a decision
 
 function RatingReadout({ label, value }: { label: string; value: number | null }) {
   return (
@@ -37,9 +55,12 @@ function RatingReadout({ label, value }: { label: string; value: number | null }
 export function ListingCard({
   listing,
   user,
-  onHide,
   onCategoryRate,
+  detailLevel = "summary",
   linkExternally = false,
+  swipeDecide = false,
+  onSwipe,
+  onDisqualify,
 }: Props) {
   const [showCategories, setShowCategories] = useState(false);
   const [dragX, setDragX] = useState(0);
@@ -61,6 +82,7 @@ export function ListingCard({
   const myCategories = listing.category_ratings?.[user] || {};
 
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!swipeDecide) return;
     draggingRef.current = true;
     startXRef.current = e.clientX;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -72,7 +94,9 @@ export function ListingCard({
   const commitDrag = () => {
     if (!draggingRef.current) return;
     if (dragX < -SWIPE_THRESHOLD) {
-      onHide(listing.id, true);
+      onSwipe?.(listing.id, "left");
+    } else if (dragX > SWIPE_THRESHOLD) {
+      onSwipe?.(listing.id, "right");
     }
     draggingRef.current = false;
     setDragX(0);
@@ -81,7 +105,7 @@ export function ListingCard({
   return (
     <div className="listing-card">
       <div
-        className="listing-photo-wrap"
+        className={`listing-photo-wrap ${swipeDecide ? "swipeable" : ""}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={commitDrag}
@@ -98,24 +122,19 @@ export function ListingCard({
           <div className="listing-photo-placeholder">No photo yet - run a scan to get one</div>
         )}
         {listing.rank != null && <div className="rank-badge">#{listing.rank}</div>}
-        {dragX < -20 && (
-          <div
-            className="pass-stamp"
-            style={{ opacity: Math.min(1, -dragX / SWIPE_THRESHOLD) }}
-          >
+        {swipeDecide && dragX < -20 && (
+          <div className="pass-stamp" style={{ opacity: Math.min(1, -dragX / SWIPE_THRESHOLD) }}>
             PASS
           </div>
         )}
-        <button
-          type="button"
-          className={`cricket-button ${listing.hidden ? "hidden-state" : ""}`}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={() => onHide(listing.id, !listing.hidden)}
-          aria-label={listing.hidden ? "Unhide - bring back into the feed" : "Not interested - hide this listing"}
-          title={listing.hidden ? "Unhide" : "Not interested (or swipe the photo left)"}
-        >
-          🦗
-        </button>
+        {swipeDecide && dragX > 20 && (
+          <div
+            className="interested-stamp"
+            style={{ opacity: Math.min(1, dragX / SWIPE_THRESHOLD) }}
+          >
+            YES
+          </div>
+        )}
       </div>
       <div className="listing-body">
         <div className="listing-header">
@@ -153,48 +172,64 @@ export function ListingCard({
         {listing.ai_score != null && (
           <div className="ai-score-line">
             <span className={`score-pill ${scoreClass}`}>{(listing.ai_score / 10).toFixed(1)}/10 match</span>
-            {listing.ai_reasoning && <span className="ai-reasoning">{listing.ai_reasoning}</span>}
+            {detailLevel !== "minimal" && listing.ai_reasoning && (
+              <span className="ai-reasoning">{listing.ai_reasoning}</span>
+            )}
           </div>
         )}
 
-        {Object.entries(listing.reactions || {}).map(
-          ([u, r]) =>
-            r.comment && (
-              <div className="comment-preview" key={u}>
-                <strong>{u[0].toUpperCase() + u.slice(1)}:</strong> {r.comment}
-              </div>
-            ),
-        )}
-
-        <div className="ratings">
-          <RatingReadout label="Elliott" value={listing.ratings.elliott} />
-          <RatingReadout label="Madison" value={listing.ratings.madison} />
-          {listing.label && <div className="rating-label">{listing.label}</div>}
-        </div>
-
-        <button
-          type="button"
-          className="rate-toggle"
-          onClick={() => setShowCategories((v) => !v)}
-        >
-          {showCategories ? "Hide category ratings ▲" : "Like it? Rate by category ▾"}
-        </button>
-        {showCategories && (
-          <div className="category-panel">
-            {CATEGORIES.map((c) => (
-              <div className="category-row" key={c.key}>
-                <span>{c.label}</span>
-                <Stars
-                  value={myCategories[c.key] ?? null}
-                  editable
-                  onChange={(n) => onCategoryRate(listing.id, c.key, n)}
-                />
-              </div>
-            ))}
+        {detailLevel !== "minimal" && (
+          <div className="ratings">
+            <RatingReadout label="Elliott" value={listing.ratings.elliott} />
+            <RatingReadout label="Madison" value={listing.ratings.madison} />
+            {listing.label && <div className="rating-label">{listing.label}</div>}
           </div>
         )}
 
-        {!linkExternally && (
+        {detailLevel === "full" && (
+          <>
+            <button type="button" className="rate-toggle" onClick={() => setShowCategories((v) => !v)}>
+              {showCategories ? "Hide category ratings ▲" : "Like it? Rate by category ▾"}
+            </button>
+            {showCategories && (
+              <div className="category-panel">
+                {CATEGORIES.map((c) => (
+                  <div className="category-row" key={c.key}>
+                    <span>{c.label}</span>
+                    <Stars
+                      value={myCategories[c.key] ?? null}
+                      editable
+                      onChange={(n) => onCategoryRate(listing.id, c.key, n)}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {swipeDecide && (
+          <div className="swipe-buttons">
+            <button type="button" className="swipe-pass" onClick={() => onSwipe?.(listing.id, "left")}>
+              ✕ Pass
+            </button>
+            <button
+              type="button"
+              className="swipe-interested"
+              onClick={() => onSwipe?.(listing.id, "right")}
+            >
+              ✓ Interested
+            </button>
+          </div>
+        )}
+
+        {onDisqualify && (
+          <button type="button" className="disqualify-link" onClick={() => onDisqualify(listing.id)}>
+            Off market / disqualify
+          </button>
+        )}
+
+        {!linkExternally && !swipeDecide && (
           <div className="card-actions">
             <Link to={`/listings/${listing.id}`}>Details / comment →</Link>
           </div>

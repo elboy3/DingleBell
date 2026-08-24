@@ -3,18 +3,14 @@ import { api } from "../api";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
-export function Hidden({ user }: { user: string }) {
+export function Inbox({ user }: { user: string }) {
   const [listings, setListings] = useState<Listing[]>([]);
 
-  const load = async () => setListings(await api.hidden());
+  const load = async () => setListings(await api.inbox());
   useEffect(() => {
     load();
   }, []);
 
-  const onHide = async (id: number, hidden: boolean) => {
-    await api.setHidden(id, hidden);
-    load();
-  };
   const onCategoryRate = async (id: number, category: string, score: number) => {
     await api.setCategoryRating(id, category, score);
     load();
@@ -23,20 +19,15 @@ export function Hidden({ user }: { user: string }) {
   return (
     <div>
       <p className="empty-note">
-        Listings either of you marked "not interested" - unhide to bring one back into the feed.
+        It's a match! Listings you both swiped right on - open one to leave category ratings and
+        comments, then check the Leaderboard once you've both weighed in.
       </p>
       {listings.length === 0 ? (
-        <p className="empty">Nothing hidden right now.</p>
+        <p className="empty">No matches yet - keep swiping.</p>
       ) : (
         <div className="feed-grid">
           {listings.map((l) => (
-            <ListingCard
-              key={l.id}
-              listing={l}
-              user={user}
-              onHide={onHide}
-              onCategoryRate={onCategoryRate}
-            />
+            <ListingCard key={l.id} listing={l} user={user} onCategoryRate={onCategoryRate} />
           ))}
         </div>
       )}

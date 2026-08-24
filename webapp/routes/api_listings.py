@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, HTTPException, Request
 
 from ..categories import CATEGORY_KEYS
 from ..deps import get_current_user, get_store
-from ..feed_logic import enrich, filter_listings, sort_listings
+from ..feed_logic import enrich, filter_listings, sort_listings, swipe_queue_for_user
 
 router = APIRouter(prefix="/api")
 
@@ -36,6 +36,7 @@ def list_listings(
     price_max: str | None = None,
     available_before: str | None = None,
     needs_review: str | None = None,
+    only_matched: bool = False,
 ):
     user = _require_user(request)
     store = get_store()
@@ -48,6 +49,7 @@ def list_listings(
         available_before=available_before,
         needs_review=needs_review,
         viewer=user,
+        only_matched=only_matched,
     )
     listings = sort_listings(listings, sort)
 
@@ -92,9 +94,28 @@ def set_comment(request: Request, listing_id: int, comment: str = Body(..., embe
 
 
 @router.post("/listings/{listing_id}/hidden")
-def set_hidden(request: Request, listing_id: int, hidden: bool = Body(..., embed=True)):
+def set_hidden(
+    request: Request,
+    listing_id: int,
+    hidden: bool = Body(..., embed=True),
+    reason: str = Body("off_market", embed=True),
+):
+    """Leaderboard-only: disqualifying a matched listing (e.g. it went off
+    the market). Reversible via the Passed view's undo. Not used for
+    pre-match rejection - that's POST /listings/{id}/swipe instead."""
     user = _require_user(request)
-    get_store().set_hidden(listing_id, hidden, user)
+    get_store().set_hidden(listing_id, hidden, user, reason=reason)
+    return {"ok": True}
+
+
+@router.post("/listings/{listing_id}/swipe")
+def swipe(request: Request, listing_id: int, direction: str = Body(..., embed=True)):
+    """Personal and permanent - this user will never see this listing in
+    their own swipe queue again, regardless of direction."""
+    user = _require_user(request)
+    if direction not in ("left", "right"):
+        raise HTTPException(400, f"direction must be 'left' or 'right', got {direction!r}")
+    get_store().record_swipe(listing_id, user, direction)
     return {"ok": True}
 
 
@@ -124,11 +145,53 @@ def set_category_rating(
     return {"ok": True}
 
 
-@router.get("/hidden")
-def hidden_listings(request: Request):
+@router.get("/swipe-queue")
+def swipe_queue_listings(request: Request):
+    """This user's personal one-at-a-time queue: listings they haven't
+    swiped on yet, highest AI match first. Independent of what the other
+    person has done - swiping is blind."""
+    user = _require_user(request)
+    store = get_store()
+    listings = enrich(store.all_listings(include_hidden=False), store)
+    return swipe_queue_for_user(listings, user)
+
+
+@router.get("/inbox")
+def inbox_listings(request: Request):
+    """Matches - both people swiped right. Where the deeper category-rating/
+    comment review happens, via each one's detail page."""
     _require_user(request)
     store = get_store()
-    listings = [listing for listing in store.all_listings(include_hidden=True) if listing["hidden"]]
+    listings = enrich(store.all_listings(include_hidden=False), store)
+    return [listing for listing in listings if listing["match_status"] == "match"]
+
+
+@router.get("/passed")
+def passed_listings(request: Request):
+    """Full-transparency audit trail: every listing with at least one "left"
+    swipe recorded so far - covers both-passed, a mismatch (one liked, one
+    passed), and a partial pass (one passed, the other hasn't swiped yet)."""
+    _require_user(request)
+    store = get_store()
+    listings = enrich(store.all_listings(include_hidden=True), store)
+    return [
+        listing
+        for listing in listings
+        if "left" in listing["swipes"].values() and not listing["hidden"]
+    ]
+
+
+@router.get("/off-market")
+def off_market_listings(request: Request):
+    """Matches later disqualified from the Leaderboard (e.g. went off the
+    market) - reversible, unlike a personal swipe."""
+    _require_user(request)
+    store = get_store()
+    listings = [
+        listing
+        for listing in store.all_listings(include_hidden=True)
+        if listing["hidden"] and listing["hidden_reason"] == "off_market"
+    ]
     return enrich(listings, store)
 
 
@@ -141,11 +204,3 @@ def needs_scan_listings(request: Request):
     store = get_store()
     listings = enrich(store.all_listings(include_hidden=True), store)
     return [listing for listing in listings if listing["needs_backfill"]]
-
-
-@router.get("/neighborhoods")
-def neighborhoods(request: Request):
-    _require_user(request)
-    store = get_store()
-    listings = store.all_listings(include_hidden=True)
-    return sorted({listing["neighborhood"] for listing in listings if listing.get("neighborhood")})

@@ -7,9 +7,17 @@ from dateutil import parser as dateparser
 
 from apt_agent.store import ListingStore
 
-from .ranking import compute_rating_summary
+from .ranking import KNOWN_USERS, compute_rating_summary
 
 FAVORITE_THRESHOLD = 4  # both_rating >= this counts as "a favorite" for open-houses
+
+
+def match_status(swipes: dict[str, str]) -> str:
+    """ "pending" until both known users have swiped; then "match" if both
+    swiped right, else "miss" (either one or both swiped left)."""
+    if len(swipes) < len(KNOWN_USERS):
+        return "pending"
+    return "match" if all(direction == "right" for direction in swipes.values()) else "miss"
 
 
 def enrich(listings: list[dict], store: ListingStore) -> list[dict]:
@@ -19,6 +27,8 @@ def enrich(listings: list[dict], store: ListingStore) -> list[dict]:
         listing.update(compute_rating_summary(reactions))
         listing["category_ratings"] = store.get_category_ratings_for_listing(listing["id"])
         listing["needs_backfill"] = not listing.get("photo_url") or not listing.get("address")
+        listing["swipes"] = store.all_swipes_for_listing(listing["id"])
+        listing["match_status"] = match_status(listing["swipes"])
     return listings
 
 
@@ -44,11 +54,14 @@ def filter_listings(
     needs_review: str | None = None,
     viewer: str | None = None,
     include_incomplete: bool = False,
+    only_matched: bool = False,
 ) -> list[dict]:
     result = listings
 
     if not include_incomplete:
         result = [listing for listing in result if not listing.get("needs_backfill")]
+    if only_matched:
+        result = [listing for listing in result if listing.get("match_status") == "match"]
 
     if neighborhood:
         result = [listing for listing in result if listing.get("neighborhood") == neighborhood]
@@ -88,6 +101,23 @@ def filter_listings(
         ]
 
     return result
+
+
+def swipe_queue_for_user(listings: list[dict], user: str) -> list[dict]:
+    """This user's personal, independent swipe queue: listings they haven't
+    swiped on yet (regardless of what the other person has done - swiping is
+    blind), excluding incomplete listings (Needs Scan handles those) and
+    anything already disqualified post-match. Highest AI match first, since
+    that's the most useful default order for a one-at-a-time queue with no
+    filter UI of its own."""
+    undecided = [
+        listing
+        for listing in listings
+        if user not in listing.get("swipes", {}) and not listing.get("needs_backfill")
+    ]
+    return sorted(
+        undecided, key=lambda listing: (listing["ai_score"] is None, -(listing["ai_score"] or 0))
+    )
 
 
 def _ranked(listings: list[dict], key) -> list[dict]:

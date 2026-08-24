@@ -53,6 +53,16 @@ CREATE TABLE IF NOT EXISTS listing_category_ratings (
 );
 CREATE INDEX IF NOT EXISTS idx_listing_category_ratings_listing
     ON listing_category_ratings(listing_id);
+
+CREATE TABLE IF NOT EXISTS listing_swipes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    listing_id INTEGER NOT NULL REFERENCES listings(id),
+    user TEXT NOT NULL,
+    direction TEXT NOT NULL,
+    swiped_at TEXT NOT NULL,
+    UNIQUE(listing_id, user)
+);
+CREATE INDEX IF NOT EXISTS idx_listing_swipes_listing ON listing_swipes(listing_id);
 """
 
 # Columns added after the initial schema above - kept as a migration list
@@ -72,6 +82,14 @@ _MIGRATIONS = [
     ("hidden", "INTEGER NOT NULL DEFAULT 0"),
     ("hidden_by", "TEXT"),
     ("hidden_at", "TEXT"),
+    ("hidden_reason", "TEXT"),  # only ever "off_market" now - see set_hidden's docstring
+    # interested/interested_by/interested_at: unused leftovers from an earlier
+    # shared-swipe-queue design, superseded by the per-user listing_swipes
+    # table below. Left in place rather than dropped (SQLite can't cheaply
+    # drop columns) - nothing reads or writes them anymore.
+    ("interested", "INTEGER NOT NULL DEFAULT 0"),
+    ("interested_by", "TEXT"),
+    ("interested_at", "TEXT"),
 ]
 
 # Common noise words that show up in listing titles/addresses but don't
@@ -270,19 +288,62 @@ class ListingStore:
                 ),
             )
 
-    def set_hidden(self, listing_id: int, hidden: bool, by: str) -> None:
-        """Hidden is shared, not per-user - a deliberate joint decision that
-        removes a listing from both feeds, reversible via the /hidden view."""
+    def set_hidden(
+        self, listing_id: int, hidden: bool, by: str, reason: str = "off_market"
+    ) -> None:
+        """Hidden is shared, not per-user - a deliberate joint decision, made
+        only from the Leaderboard to disqualify a matched listing (e.g. it
+        went off the market), reversible via the Passed view's undo. This is
+        NOT how a pre-match "no" is recorded - that's a personal, permanent
+        swipe (see record_swipe) with no undo, independent per person."""
         with self._conn() as conn:
             conn.execute(
-                "UPDATE listings SET hidden = ?, hidden_by = ?, hidden_at = ? WHERE id = ?",
+                """UPDATE listings
+                   SET hidden = ?, hidden_by = ?, hidden_at = ?, hidden_reason = ?
+                   WHERE id = ?""",
                 (
                     1 if hidden else 0,
                     by if hidden else None,
                     datetime.now(UTC).isoformat() if hidden else None,
+                    reason if hidden else None,
                     listing_id,
                 ),
             )
+
+    def record_swipe(self, listing_id: int, user: str, direction: str) -> None:
+        """Personal, one-time, permanent - a listing swiped in either
+        direction never reappears in that user's own swipe queue again.
+        Whether it becomes a match depends only on what the *other* person
+        does, independently (see feed_logic.match_status)."""
+        with self._conn() as conn:
+            conn.execute(
+                """INSERT INTO listing_swipes (listing_id, user, direction, swiped_at)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(listing_id, user) DO UPDATE SET direction = ?, swiped_at = ?""",
+                (
+                    listing_id,
+                    user,
+                    direction,
+                    datetime.now(UTC).isoformat(),
+                    direction,
+                    datetime.now(UTC).isoformat(),
+                ),
+            )
+
+    def all_swipes_for_listing(self, listing_id: int) -> dict[str, str]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT user, direction FROM listing_swipes WHERE listing_id = ?",
+                (listing_id,),
+            ).fetchall()
+        return dict(rows)
+
+    def swiped_listing_ids_for_user(self, user: str) -> set[int]:
+        with self._conn() as conn:
+            rows = conn.execute(
+                "SELECT listing_id FROM listing_swipes WHERE user = ?", (user,)
+            ).fetchall()
+        return {row[0] for row in rows}
 
     def set_category_rating(self, listing_id: int, user: str, category: str, score: int) -> None:
         with self._conn() as conn:

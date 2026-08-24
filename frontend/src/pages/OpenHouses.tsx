@@ -12,10 +12,6 @@ export function OpenHouses({ user }: { user: string }) {
     load(favoritesOnly);
   }, [favoritesOnly]);
 
-  const onHide = async (id: number, hidden: boolean) => {
-    await api.setHidden(id, hidden);
-    load(favoritesOnly);
-  };
   const onCategoryRate = async (id: number, category: string, score: number) => {
     await api.setCategoryRating(id, category, score);
     load(favoritesOnly);
@@ -38,13 +34,7 @@ export function OpenHouses({ user }: { user: string }) {
       ) : (
         <div className="feed-grid">
           {listings.map((l) => (
-            <ListingCard
-              key={l.id}
-              listing={l}
-              user={user}
-              onHide={onHide}
-              onCategoryRate={onCategoryRate}
-            />
+            <ListingCard key={l.id} listing={l} user={user} onCategoryRate={onCategoryRate} />
           ))}
         </div>
       )}

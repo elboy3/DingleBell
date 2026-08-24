@@ -76,6 +76,11 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
   font-size: 0.9rem;
   font-weight: 700;
   margin-bottom: 1rem;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
 }
 .back-link:hover { color: var(--text); }
 
@@ -157,8 +162,8 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
 
 .listing-photo-wrap {
   position: relative; background: #eceef2; border-radius: var(--radius); overflow: hidden;
-  touch-action: pan-y; cursor: grab; user-select: none;
 }
+.listing-photo-wrap.swipeable { touch-action: pan-y; cursor: grab; user-select: none; }
 .listing-photo { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
 .listing-photo-placeholder {
   width: 100%; aspect-ratio: 1 / 1;
@@ -167,27 +172,15 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
   color: #b0b0b0; font-size: 0.85rem; font-weight: 700; text-align: center; padding: 1rem;
 }
 
-.cricket-button {
-  position: absolute; top: 0.75rem; right: 0.75rem;
-  background: rgba(255, 255, 255, 0.85); border: none; cursor: pointer;
-  width: 2.2rem; height: 2.2rem; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem; line-height: 1;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
-  transition: transform 0.1s;
-}
-.cricket-button:hover { transform: scale(1.08); }
-.cricket-button.hidden-state { filter: grayscale(1) opacity(0.55); }
-
-.pass-stamp {
-  position: absolute; top: 1.1rem; left: 1.1rem;
+.pass-stamp, .interested-stamp {
+  position: absolute; top: 1.1rem;
   border: 3px solid #fff; color: #fff; font-weight: 800; font-size: 1.1rem;
   letter-spacing: 0.08em; padding: 0.2rem 0.7rem; border-radius: 8px;
-  transform: rotate(-12deg);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
-  background: rgba(255, 56, 92, 0.35);
   pointer-events: none;
 }
+.pass-stamp { left: 1.1rem; transform: rotate(-12deg); background: rgba(56, 56, 56, 0.4); }
+.interested-stamp { right: 1.1rem; transform: rotate(12deg); background: rgba(56, 168, 87, 0.45); }
 
 .rank-badge {
   position: absolute; top: 0.75rem; left: 0.75rem;
@@ -251,6 +244,24 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
   color: var(--accent); text-decoration: none; font-size: 0.87rem; font-weight: 800;
 }
 
+.swipe-buttons { display: flex; gap: 0.7rem; margin-top: 0.9rem; }
+.swipe-buttons button {
+  flex: 1; border: none; border-radius: 999px; padding: 0.75rem 1rem;
+  font-weight: 800; font-size: 0.95rem; cursor: pointer; transition: transform 0.1s;
+}
+.swipe-buttons button:hover { transform: scale(1.02); }
+.swipe-pass { background: var(--bg-subtle); color: var(--text); border: 1px solid var(--border) !important; }
+.swipe-pass:hover { background: #f0f0f0; }
+.swipe-interested { background: var(--accent); color: #fff; }
+.swipe-interested:hover { background: var(--accent-hover); }
+
+.disqualify-link, .undo-link {
+  display: block; width: 100%; margin-top: 0.6rem; background: none; border: none;
+  color: var(--text-muted); font-size: 0.8rem; font-weight: 700; text-decoration: underline;
+  cursor: pointer; text-align: center;
+}
+.disqualify-link:hover, .undo-link:hover { color: var(--accent); }
+
 .rate-toggle {
   display: block; width: 100%; margin-top: 0.7rem;
   background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text);
@@ -303,6 +314,22 @@ h3 { font-size: 1.05rem; font-weight: 800; margin: 1.5rem 0 0.6rem; }
 .empty, .empty-note { color: var(--text-muted); text-align: center; padding: 2.5rem 0; font-size: 0.95rem; font-weight: 600; }
 .empty a { color: var(--accent); font-weight: 800; text-decoration: none; }
 .empty a:hover { text-decoration: underline; }
+
+.swipe-page { max-width: 420px; margin: 0 auto; }
+.swipe-progress { text-align: center; color: var(--text-muted); font-weight: 700; font-size: 0.88rem; margin-bottom: 1rem; }
+.swipe-empty { padding-top: 3rem; }
+.swipe-empty-links { display: flex; flex-direction: column; gap: 0.6rem; align-items: center; margin-top: 0.5rem; }
+.swipe-empty-links a { color: var(--accent); font-weight: 800; text-decoration: none; }
+.swipe-empty-links a:hover { text-decoration: underline; }
+
+.swipe-tags { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.swipe-tag {
+  font-size: 0.75rem; font-weight: 800; padding: 0.2rem 0.6rem; border-radius: 999px;
+  text-transform: uppercase; letter-spacing: 0.02em;
+}
+.swipe-tag.liked { background: #e7f6ec; color: #1a7a3e; }
+.swipe-tag.passed { background: #f0f0f0; color: #717171; }
+.swipe-tag.pending { background: var(--accent-tint); color: var(--accent); }
 
 .whoami-page { max-width: 320px; margin: 5rem auto; text-align: center; }
 .whoami-page h1 { font-size: 1.5rem; font-weight: 800; }

@@ -324,3 +324,36 @@ listings scanned before `address` parsing succeeded) will otherwise
 overflow the card's fixed width instead of wrapping, since flex items
 don't wrap unbreakable text by default. Found via an actual Playwright
 screenshot of the rendered feed, not by reading the CSS.
+
+### Dating-app swipe model: independent per-person swiping, matches gate review
+The single shared feed (rate/comment/hide together) got reworked twice
+in one session. First pass: a shared "interested" flag and one shared
+swipe queue both people triage together. User feedback: that's not
+actually what was wanted - "it's actually going to be like a dating
+app... we each do this separately... for each of us we never see the
+same listing twice." The real model: Elliott and Madison each get their
+own private swipe queue and decide left/right independently, blind to
+what the other does. A listing only becomes a match - and moves to a
+shared Inbox for category-rating/comment review - when **both** swipe
+right. A miss (either swipes left) is gone from *that person's* queue
+forever, no undo, but stays visible in a full-transparency Passed view
+(tagged per-person: liked/passed/hasn't swiped yet) so nothing silently
+disappears.
+
+Implementation: a new `listing_swipes` table (`listing_id, user,
+direction, swiped_at`, unique per listing+user) replaces the earlier
+shared `interested` boolean - `match_status()` in `webapp/feed_logic.py`
+derives pending/match/miss from the two recorded swipes, computed at
+request time, not stored. The `interested`/`interested_by`/
+`interested_at` columns from the superseded first pass were left in
+the schema unused rather than dropped - SQLite can't cheaply drop
+columns, and three unused nullable columns cost nothing. The existing
+shared `hidden`/`hidden_reason` flag was *not* replaced - it's kept for
+exactly one purpose now, the Leaderboard's reversible "off market"
+disqualify action on an already-matched listing, which is a genuinely
+different, shared, reversible decision from a personal, permanent
+pre-match swipe.
+
+The Leaderboard survives downstream of the Inbox (ranked matches,
+Elliott/Madison/AI/Shared tabs), confirmed explicitly rather than
+assumed, since it would have been easy to guess the Inbox replaced it.
