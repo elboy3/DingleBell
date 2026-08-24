@@ -7,7 +7,7 @@ frontend/.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routes import api_identity, api_listings, api_open_houses
+from .routes import api_identity, api_listings
 
 app = FastAPI(title="Apartment Hunt API")
 
@@ -21,4 +21,3 @@ app.add_middleware(
 
 app.include_router(api_identity.router)
 app.include_router(api_listings.router)
-app.include_router(api_open_houses.router)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { useCategoryRate } from "../hooks/useCategoryRate";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
@@ -38,10 +39,7 @@ export function Passed({ user }: { user: string }) {
     load();
   }, []);
 
-  const onCategoryRate = async (id: number, category: string, score: number) => {
-    await api.setCategoryRating(id, category, score);
-    load();
-  };
+  const onCategoryRate = useCategoryRate(load);
   const undoOffMarket = async (id: number) => {
     await api.setHidden(id, false);
     load();

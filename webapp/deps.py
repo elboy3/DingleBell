@@ -8,8 +8,7 @@ from fastapi import Request
 from apt_agent.store import ListingStore
 
 from .config import load_webapp_config
-
-KNOWN_USERS = ["elliott", "madison"]
+from .ranking import KNOWN_USERS
 
 _store: ListingStore | None = None
 

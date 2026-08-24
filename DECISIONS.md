@@ -357,3 +357,52 @@ pre-match swipe.
 The Leaderboard survives downstream of the Inbox (ranked matches,
 Elliott/Madison/AI/Shared tabs), confirmed explicitly rather than
 assumed, since it would have been easy to guess the Inbox replaced it.
+
+### Cleanup pass: 3 parallel review agents (bugs / dead code / refactors)
+After the swipe/match rework, ran three parallel agents against the
+whole repo - one hunting real bugs, one hunting unused code/bad naming,
+one hunting worthwhile refactors - each told to verify findings (grep
+for actual callers, trace code paths) rather than speculate, and to
+weigh refactor suggestions against this file's own "don't over-abstract"
+philosophy rather than default to more abstraction. Real findings fixed:
+
+- **Bug**: the category-rating average used Python's round-half-to-even
+  (`round(2.5) == 2`), silently understating a rating that drives
+  Leaderboard sort order. Fixed to round half up.
+- **Bug**: `/api/open-houses` was never updated for the swipe/match
+  model - a permanently-swiped-left listing could still show up there.
+  Rather than patch it, removed the Open Houses feature outright
+  (route, page, nav link, `FAVORITE_THRESHOLD`) - it was a dedicated
+  cross-listing browsing page nobody asked to keep; a listing's own
+  open-house info still shows inline on its card via `open_house_raw`.
+- **Dead code**: `ListingStore.swiped_listing_ids_for_user` (never
+  wired in), the entire filter/sort surface in `feed_logic.py`/
+  `api_listings.py` left over from the deleted grid-browse Feed page
+  (`neighborhood`/`price_min`/`price_max`/`available_before`/
+  `needs_review`/`min_score`, `_available_on_or_before`, the plain
+  `"ai"`/`"ours"` sort branch), the `/listings/{id}/rating` POST route
+  and its frontend client method (superseded by category-rating's
+  averaging), and several CSS classes (`.comment-preview`,
+  `.filters-toggle`/`.more-filters`, `.empty a`, and `.controls` once
+  Open Houses' filter checkbox - its last user - was removed too).
+- **Landmine**: `KNOWN_USERS` was independently defined in both
+  `webapp/deps.py` and `webapp/ranking.py` with the same name/value -
+  a third user added to one and not the other would've silently broken
+  things. Consolidated to `ranking.py`, re-exported from `deps.py`.
+- **Refactor**: extracted `frontend/src/hooks/useCategoryRate.ts` - the
+  save-then-reload handler was copy-pasted verbatim across 6 page
+  files. Added a small `_enriched_listings()` helper in
+  `api_listings.py` for the same reason on the backend side.
+- **Docs**: `CLAUDE.md` had drifted significantly out of date (still
+  described the deleted Feed/Hidden pages and `/api/hidden`/
+  `/api/neighborhoods` endpoints, didn't mention the swipe/match model
+  at all) - given it's the "read this first" file, this was treated as
+  the highest-priority fix, not a nice-to-have. Also caught
+  `taste_profile.md` incorrectly still listed as "doesn't exist yet"
+  when it had already been written earlier in this same session.
+- **Explicitly rejected**: a generic SQL-upsert helper for `store.py`'s
+  four `INSERT...ON CONFLICT...DO UPDATE` methods (four different
+  tables/conflict keys - more moving parts than four grep-able
+  statements), and splitting `ListingCard.tsx` (still readable at three
+  orthogonal prop dimensions; revisit only if a fifth swipe-only UI
+  element gets added).

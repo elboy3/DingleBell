@@ -84,47 +84,6 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
 }
 .back-link:hover { color: var(--text); }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-  margin-bottom: 1.25rem;
-  padding: 1rem 1.25rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  font-size: 0.9rem;
-}
-.controls label { display: flex; align-items: center; gap: 0.4rem; color: var(--text-muted); font-weight: 700; }
-.controls select, .controls input[type="number"], .controls input[type="date"] {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.4rem 0.7rem;
-  font-size: 0.9rem;
-  font-family: inherit;
-  width: 6em;
-  color: var(--text);
-}
-.controls select { width: auto; }
-.controls button {
-  border: none;
-  background: var(--accent);
-  color: #fff;
-  font-weight: 700;
-  padding: 0.45rem 1.1rem;
-  border-radius: 999px;
-  cursor: pointer;
-  font-size: 0.88rem;
-}
-.controls button:hover { background: var(--accent-hover); }
-.filters-toggle {
-  background: var(--bg-subtle) !important; color: var(--text) !important;
-  border: 1px solid var(--border) !important; margin-left: auto;
-}
-.filters-toggle:hover { background: #f0f0f0 !important; }
-.more-filters { margin-top: -0.6rem; }
-
 /* Responsive card grid - Airbnb's signature browsing layout, not a
    single stacked column */
 .feed-grid {
@@ -226,8 +185,6 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
 .score-mid { background: #fff2df; color: #9a5b00; }
 .score-low { background: #f0f0f0; color: #717171; }
 .ai-reasoning { display: block; color: var(--text-muted); font-style: italic; font-size: 0.85rem; margin-top: 0.3rem; font-weight: 500; }
-.comment-preview { margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
-.comment-preview strong { color: var(--text); font-weight: 800; }
 
 .ratings { margin-top: 0.7rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
 .rating-row { font-size: 0.88rem; margin: 0.25rem 0; display: flex; align-items: center; gap: 0.4rem; font-weight: 700; color: var(--text-muted); }
@@ -312,8 +269,6 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
 h3 { font-size: 1.05rem; font-weight: 800; margin: 1.5rem 0 0.6rem; }
 
 .empty, .empty-note { color: var(--text-muted); text-align: center; padding: 2.5rem 0; font-size: 0.95rem; font-weight: 600; }
-.empty a { color: var(--accent); font-weight: 800; text-decoration: none; }
-.empty a:hover { text-decoration: underline; }
 
 .swipe-page { max-width: 420px; margin: 0 auto; }
 .swipe-progress { text-align: center; color: var(--text-muted); font-weight: 700; font-size: 0.88rem; margin-bottom: 1rem; }
@@ -351,6 +306,5 @@ h3 { font-size: 1.05rem; font-weight: 800; margin: 1.5rem 0 0.6rem; }
   .topnav a { font-size: 0.86rem; }
   .topnav .whoami { font-size: 0.8rem; padding: 0.3rem 0.65rem; }
   main { padding: 1rem 0.85rem 3rem; }
-  .controls { padding: 0.8rem 1rem; gap: 0.7rem; }
   .feed-grid { grid-template-columns: 1fr; gap: 1.25rem; }
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { useCategoryRate } from "../hooks/useCategoryRate";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
@@ -11,10 +12,7 @@ export function Inbox({ user }: { user: string }) {
     load();
   }, []);
 
-  const onCategoryRate = async (id: number, category: string, score: number) => {
-    await api.setCategoryRating(id, category, score);
-    load();
-  };
+  const onCategoryRate = useCategoryRate(load);
 
   return (
     <div>

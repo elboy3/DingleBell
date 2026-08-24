@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api";
 import { CATEGORIES } from "../categories";
+import { useCategoryRate } from "../hooks/useCategoryRate";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
@@ -22,10 +23,7 @@ export function ListingDetail({ user }: { user: string }) {
     load();
   }, [id]);
 
-  const onCategoryRate = async (listingId: number, category: string, score: number) => {
-    await api.setCategoryRating(listingId, category, score);
-    load();
-  };
+  const onCategoryRate = useCategoryRate(load);
   const saveComment = async () => {
     await api.setComment(Number(id), commentDraft);
     load();

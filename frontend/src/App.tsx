@@ -6,7 +6,6 @@ import { Inbox } from "./pages/Inbox";
 import { Leaderboard } from "./pages/Leaderboard";
 import { ListingDetail } from "./pages/ListingDetail";
 import { NeedsScan } from "./pages/NeedsScan";
-import { OpenHouses } from "./pages/OpenHouses";
 import { Passed } from "./pages/Passed";
 import { Swipe } from "./pages/Swipe";
 import { WhoAmI } from "./pages/WhoAmI";
@@ -37,7 +36,6 @@ export default function App() {
               <Route path="/inbox" element={<Inbox user={user} />} />
               <Route path="/listings/:id" element={<ListingDetail user={user} />} />
               <Route path="/passed" element={<Passed user={user} />} />
-              <Route path="/open-houses" element={<OpenHouses user={user} />} />
               <Route path="/leaderboard" element={<Leaderboard user={user} />} />
               <Route path="/needs-scan" element={<NeedsScan user={user} />} />
             </>

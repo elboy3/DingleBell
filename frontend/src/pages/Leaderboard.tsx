@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { useCategoryRate } from "../hooks/useCategoryRate";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
@@ -29,10 +30,7 @@ export function Leaderboard({ user }: { user: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
-  const onCategoryRate = async (id: number, category: string, score: number) => {
-    await api.setCategoryRating(id, category, score);
-    load(tab);
-  };
+  const onCategoryRate = useCategoryRate(() => load(tab));
   const onDisqualify = async (id: number) => {
     await api.setHidden(id, true, "off_market");
     load(tab);

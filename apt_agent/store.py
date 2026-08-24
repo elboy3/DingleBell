@@ -257,35 +257,23 @@ class ListingStore:
             return True
 
     def set_rating(self, listing_id: int, user: str, rating: int) -> None:
+        now = datetime.now(UTC).isoformat()
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO listing_reactions (listing_id, user, rating, updated_at)
                    VALUES (?, ?, ?, ?)
                    ON CONFLICT(listing_id, user) DO UPDATE SET rating = ?, updated_at = ?""",
-                (
-                    listing_id,
-                    user,
-                    rating,
-                    datetime.now(UTC).isoformat(),
-                    rating,
-                    datetime.now(UTC).isoformat(),
-                ),
+                (listing_id, user, rating, now, rating, now),
             )
 
     def set_comment(self, listing_id: int, user: str, comment: str) -> None:
+        now = datetime.now(UTC).isoformat()
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO listing_reactions (listing_id, user, comment, updated_at)
                    VALUES (?, ?, ?, ?)
                    ON CONFLICT(listing_id, user) DO UPDATE SET comment = ?, updated_at = ?""",
-                (
-                    listing_id,
-                    user,
-                    comment,
-                    datetime.now(UTC).isoformat(),
-                    comment,
-                    datetime.now(UTC).isoformat(),
-                ),
+                (listing_id, user, comment, now, comment, now),
             )
 
     def set_hidden(
@@ -315,19 +303,13 @@ class ListingStore:
         direction never reappears in that user's own swipe queue again.
         Whether it becomes a match depends only on what the *other* person
         does, independently (see feed_logic.match_status)."""
+        now = datetime.now(UTC).isoformat()
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO listing_swipes (listing_id, user, direction, swiped_at)
                    VALUES (?, ?, ?, ?)
                    ON CONFLICT(listing_id, user) DO UPDATE SET direction = ?, swiped_at = ?""",
-                (
-                    listing_id,
-                    user,
-                    direction,
-                    datetime.now(UTC).isoformat(),
-                    direction,
-                    datetime.now(UTC).isoformat(),
-                ),
+                (listing_id, user, direction, now, direction, now),
             )
 
     def all_swipes_for_listing(self, listing_id: int) -> dict[str, str]:
@@ -338,14 +320,8 @@ class ListingStore:
             ).fetchall()
         return dict(rows)
 
-    def swiped_listing_ids_for_user(self, user: str) -> set[int]:
-        with self._conn() as conn:
-            rows = conn.execute(
-                "SELECT listing_id FROM listing_swipes WHERE user = ?", (user,)
-            ).fetchall()
-        return {row[0] for row in rows}
-
     def set_category_rating(self, listing_id: int, user: str, category: str, score: int) -> None:
+        now = datetime.now(UTC).isoformat()
         with self._conn() as conn:
             conn.execute(
                 """INSERT INTO listing_category_ratings
@@ -353,15 +329,7 @@ class ListingStore:
                    VALUES (?, ?, ?, ?, ?)
                    ON CONFLICT(listing_id, user, category)
                        DO UPDATE SET score = ?, updated_at = ?""",
-                (
-                    listing_id,
-                    user,
-                    category,
-                    score,
-                    datetime.now(UTC).isoformat(),
-                    score,
-                    datetime.now(UTC).isoformat(),
-                ),
+                (listing_id, user, category, score, now, score, now),
             )
 
     def get_category_ratings_for_listing(self, listing_id: int) -> dict[str, dict[str, int]]:

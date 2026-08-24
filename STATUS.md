@@ -108,6 +108,20 @@ Built and verified locally (all via Claude sessions):
       `min_score=""` crashing the feed, a cross-hostname SameSite
       cookie bug (frontend/backend must both use `localhost`, not mix
       with `127.0.0.1`).
+- [x] [CLAUDE] Reworked the shared feed into the current model: each
+      person swipes left/right independently (`listing_swipes` table),
+      a match (both swiped right) moves a listing into a shared Inbox
+      for category ratings (light/kitchen/location/vibe/coziness/
+      space) and comments, and the Leaderboard is scoped to matches.
+      Superseded pages/routes (`Feed`, `Hidden`, `/api/hidden` GET,
+      `/api/neighborhoods`) removed rather than left dormant. Open
+      Houses (a dedicated cross-listing browsing page) removed outright
+      - a listing's own open-house info still shows on its card.
+      Cleanup pass after: fixed a category-rating rounding bug
+      (round-half-up instead of Python's round-half-to-even), removed
+      other dead code/CSS, consolidated a duplicated `KNOWN_USERS`
+      constant, and brought `CLAUDE.md` back in sync with the current
+      pages/routes. See `DECISIONS.md`.
 
 Needs you (all [MANUAL] - real accounts/credentials/content only you can provide):
 - [ ] [MANUAL] Send reference photos or StreetEasy links (liked + disliked)

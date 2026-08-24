@@ -10,12 +10,15 @@ oriented in one pass.
 Two things, in one repo, at different points in their life:
 
 1. **The shared apartment-review web app (`webapp/`) - current focus.**
-   A small FastAPI app where the two end users browse a shared,
-   persistent, ranked feed of Brooklyn apartment listings: rate them
-   individually (1-5 stars), leave comments, jointly hide ones they're
-   done with, see upcoming open houses, and see an AI taste-match score
-   computed automatically for each listing. Fed by an interactive
-   browser-driven scan (see "Ingestion" below), not a cron job.
+   A small FastAPI app, now built as a dating-app-style swipe/match
+   flow: Elliott and Madison each swipe left/right on Brooklyn listings
+   independently and blind to each other (an AI taste-match score is
+   computed automatically to help prioritize); a listing becomes a
+   match only when **both** swipe right, moving it into a shared Inbox
+   for category ratings and comments; a ranked Leaderboard sits
+   downstream of that. See "The second pivot" below for why this isn't
+   the original shared-feed design. Fed by an interactive browser-driven
+   scan (see "Ingestion" below), not a cron job.
 2. **The original Gmail-alert pipeline (`apt_agent/`) - deprioritized,
    still running.** Watches a Gmail inbox for StreetEasy/Zillow/etc.
    alert emails and emails the two users when a hard-filtered match
@@ -69,6 +72,24 @@ updated accordingly - speed is explicitly no longer a priority.** Full
 story: `DECISIONS.md` (search "Pivot from email alerts") and
 `.claude/plans/well-i-realized-that-goofy-platypus.md`.
 
+## The second pivot: shared feed -> independent swipe/match
+
+The first webapp build had both people rate/comment/hide from one
+shared feed together. Real feedback: *"it's actually going to be like
+a dating app... we each do this separately... for each of us we never
+see the same listing twice."* So the shared feed, its filters, and a
+shared "interested" flag were replaced with true per-user independent
+swiping (`apt_agent/store.py`'s `listing_swipes` table) - a listing
+only becomes a match (both swiped right) and moves to the shared Inbox
+once both have decided. A left swipe is personal and permanent (no
+undo), but stays visible in a full-transparency Passed view. The
+Leaderboard survived this pivot, now scoped to matches instead of the
+old shared flag. Full reasoning: `DECISIONS.md` ("Dating-app swipe
+model"). The Open Houses feature (a dedicated page for browsing
+upcoming open houses across listings) was removed outright rather than
+updated for the new model - a specific listing's open-house info still
+shows inline on its own card via `open_house_raw`/`open_house_date`.
+
 ## Goal ordering (matters for design decisions) - updated post-pivot
 
 1. **Breadth of discovery** - surface listings they wouldn't have found
@@ -86,18 +107,18 @@ deadline pressure (end of Sep 2026) still means the web app needs to
 actually be usable and hosted somewhere both phones can reach, not a
 perpetual work-in-progress.
 
-## Current focus: the shared web app pivot
+## Current focus: the shared web app, now the swipe/match model
 
-Status as of 2026-08-22: schema extended, rebuilt as a React SPA +
-JSON API (see architecture section below - reversed the original
-Jinja decision after real usage showed it felt clunky), feed
-filters/leaderboard/review-status segmentation added, the browser-scan
-ingestion workflow formalized as a project skill, and AI scoring
-working via the scanning session's own vision (no API key needed).
-**Not yet hosted anywhere** (no Turso/Fly.io accounts set up yet), and
-the taste profile is in progress (user has started sending liked
-StreetEasy links). See `STATUS.md`'s "Shared web app pivot" section
-for the live checklist of what's left.
+Status as of 2026-08-24: React SPA + JSON API, browser-scan ingestion
+formalized as a project skill, AI scoring working via the scanning
+session's own vision (no API key needed), category ratings (light/
+kitchen/location/vibe/coziness/space) added as the deeper post-match
+review mechanism, and the shared feed replaced by the independent
+swipe/match model described in "The second pivot" above. **Not yet
+hosted anywhere** (no Turso/Fly.io accounts set up yet), and the taste
+profile is in progress (user has started sending liked StreetEasy
+links). See `STATUS.md`'s "Shared web app pivot" section for the live
+checklist of what's left.
 
 **Phase 2.5 (interactive SMS/texting agent), previously designed in
 `ROADMAP.md`/`DECISIONS.md`, is superseded by this pivot** - the user
@@ -122,12 +143,16 @@ pending plan.
   cookie silently not sent) came from exactly this: different
   hostnames count as cross-*site* for `SameSite=Lax` cookie purposes
   even though both are loopback. See DECISIONS.md.
-- **Pages**: Feed (sort by AI score or min-of-both-ratings; filters for
-  neighborhood/price range/move-in date; a "needs my review" / "needs
-  both" segmented filter), ListingDetail (Google Maps embed - keyless,
-  no API key - back link, comments), Hidden, OpenHouses, Leaderboard
-  (ranked by min-of-both-ratings, only listings both people have
-  rated), WhoAmI.
+- **Pages**: Swipe (home - one-at-a-time personal queue, left/right,
+  highest AI match first, no filter UI), Inbox (matches - both swiped
+  right - where category ratings/comments happen), ListingDetail
+  (Google Maps embed - keyless, no API key - StreetEasy CTA, category
+  ratings, comments), Leaderboard (four tabs: shared/elliott/madison/
+  ai, scoped to matches, with an "off market" disqualify action),
+  Passed (full-transparency audit of every listing either person
+  swiped left on, plus disqualified matches with an undo), NeedsScan
+  (listings missing a photo/address, kept out of the swipe queue),
+  WhoAmI.
 - **Testing this app's own UI doesn't need the authenticated
   browser-use session** - only StreetEasy scraping does. Use a plain
   headless Playwright browser (`frontend/`'s own `playwright` dev
@@ -156,10 +181,18 @@ pending plan.
 - **One shared `ListingStore` (`apt_agent/store.py`), three consumers**:
   the email pipeline's `main.py`, `browser_import.py`, and `webapp/`.
   Extended (not replaced) with `listing_reactions` (per-user rating +
-  comment), a shared `hidden`/`hidden_by`/`hidden_at` flag (a joint,
-  reversible decision - not per-user, unlike rating), `ai_score`/
+  comment), `listing_category_ratings` (per-user, per-category 1-5
+  score - the overall rating follows their average), `listing_swipes`
+  (per-user left/right, permanent, drives `match_status` in
+  `webapp/feed_logic.py`), a shared `hidden`/`hidden_by`/`hidden_at`/
+  `hidden_reason` flag (now used for exactly one thing - the
+  Leaderboard's reversible "off market" disqualify on an already-
+  matched listing, not for pre-match rejection), `ai_score`/
   `ai_reasoning`/`ai_profile_version`, and `open_house_raw`/
-  `open_house_date`.
+  `open_house_date`. (`interested`/`interested_by`/`interested_at`
+  columns are unused leftovers from a superseded design - see "The
+  second pivot" - left in place since SQLite can't cheaply drop
+  columns; don't wire anything up to them.)
 - **AI taste-match scoring: the scanning session scores it directly,
   no API key required.** The Claude Code session doing the interactive
   browser scan already has vision and is already looking at the
@@ -175,12 +208,15 @@ pending plan.
   `filters.py`'s "unknown field, don't block on it" pattern.
   `webapp/rescore.py` is a manual backfill command using that fallback
   path, for un-scored or stale-profile listings.
-- **Ranking is two separate, non-destructive mechanisms** - explicit
-  shared hide (reversible via `/hidden`) for "we're done with this
-  one," and a live, adjustable sort/filter (AI score, or min-of-both
-  -ratings - deliberately MIN not average, so one person's dislike
-  isn't smoothed over) for "declutter the view." Neither one silently
-  discards data.
+- **Filtering out and ranking down are two different, deliberately
+  separate mechanisms.** A personal swipe-left (permanent, no undo,
+  independent per person - see "The second pivot") is how a listing
+  leaves consideration *before* a match. Once matched, ranking uses
+  min-of-both-ratings (deliberately MIN not average, so one person's
+  dislike isn't smoothed over) or AI score - a live, non-destructive
+  sort, never a hide. The only *shared*, reversible removal is the
+  Leaderboard's "off market" disqualify, for a match that's no longer
+  real-world available.
 - **Lightweight identity, no passwords.** `/whoami` sets an unsigned
   cookie for "elliott" or "madison" - a tampered cookie's worst case is
   a misattributed rating, not a security problem, for exactly 2 known
@@ -217,25 +253,27 @@ pending plan.
 | File | Purpose |
 |---|---|
 | `webapp/app.py` | FastAPI app instance, CORS, mounts all API routers |
-| `webapp/deps.py` | `get_store()`, `get_current_user()`, `KNOWN_USERS` |
+| `webapp/deps.py` | `get_store()`, `get_current_user()` - `KNOWN_USERS` itself lives in `ranking.py`, re-exported here |
 | `webapp/config.py` | Thin wrapper around `apt_agent.main.load_config()` |
-| `webapp/ranking.py` | `compute_rating_summary()` - shared min-of-both-ratings logic |
-| `webapp/feed_logic.py` | `enrich()`/`filter_listings()`/`sort_listings()` - shared across API routes |
+| `webapp/ranking.py` | `KNOWN_USERS`, `compute_rating_summary()` - shared min-of-both-ratings logic |
+| `webapp/feed_logic.py` | `enrich()`, `match_status()`, `swipe_queue_for_user()`, `filter_listings()`/`sort_listings()` (Leaderboard only) |
+| `webapp/categories.py` | The six rating categories (light/kitchen/location/vibe/coziness/space) |
 | `webapp/scoring.py` | Claude vision taste-match scoring, graceful degradation (secondary/fallback path) |
 | `webapp/rescore.py` | `python -m webapp.rescore` - manual backfill for stale/missing AI scores |
-| `webapp/routes/api_listings.py` | `GET /api/listings` (feed, filters/sort), `/api/listings/{id}`, rating/comment/hidden, `/api/hidden`, `/api/neighborhoods` |
-| `webapp/routes/api_open_houses.py` | `GET /api/open-houses` |
+| `webapp/routes/api_listings.py` | `/swipe-queue`, `/inbox`, `/passed`, `/off-market`, `/needs-scan`, `/listings` (Leaderboard only), `/listings/{id}`, and the comment/hidden/swipe/category-rating actions |
 | `webapp/routes/api_identity.py` | `GET`/`POST /api/whoami` - cookie-based identity |
 | `frontend/src/App.tsx` | React Router setup, identity gate |
 | `frontend/src/api.ts` | Fetch client - **must point at `localhost:8000`, not `127.0.0.1:8000`** (cookie hostname match) |
-| `frontend/src/pages/*.tsx` | Feed, ListingDetail, Hidden, OpenHouses, Leaderboard, WhoAmI |
-| `frontend/src/components/*.tsx` | `ListingCard`, `Stars`, `NavBar` |
+| `frontend/src/pages/*.tsx` | Swipe (home), Inbox, ListingDetail, Leaderboard, Passed, NeedsScan, WhoAmI |
+| `frontend/src/components/*.tsx` | `ListingCard` (detailLevel/swipeDecide/linkExternally/onDisqualify props), `Stars`, `NavBar` |
+| `frontend/src/hooks/useCategoryRate.ts` | Shared category-rating-then-reload handler, used by every list/detail page |
+| `frontend/src/categories.ts` | Mirrors `webapp/categories.py`'s category list (kept in sync by hand) |
 | `frontend/vite.config.ts` | Dev server pinned to port 5175 (not the 5173 default - avoids colliding with other local projects) |
 | `apt_agent/browser_scan/extract.js` | DOM-extraction script, run via `browser-use`'s `js()` |
 | `apt_agent/browser_scan_helpers.py` | Field parsing, batch dedup, pacing/page-cap constants |
 | `apt_agent/browser_import.py` | Persists a scan's output into `listings.db`, wires in AI scoring |
 | `.claude/skills/scan-streeteasy/SKILL.md` | The actual session procedure for running a scan |
-| `taste_profile.md` | **Doesn't exist yet** - written from user's reference photos |
+| `taste_profile.md` | Exists, **preliminary draft** - 3 liked examples, no disliked ones yet |
 
 ### Email pipeline (deprioritized, still running)
 | File | Purpose |
@@ -295,7 +333,10 @@ pending plan.
   while building it) - its graceful-degradation path is proven, the
   real API call isn't. Doesn't block anything: the primary scoring
   path (the scanning session itself) doesn't depend on it.
-- `taste_profile.md` doesn't exist yet - needs reference photos.
+- `taste_profile.md` exists but is a **preliminary draft, liked
+  examples only** (3 favorites, no disliked examples yet) - scores from
+  it are rough signal, not confident judgment. Ask for disliked
+  examples to sharpen it.
 - Not hosted anywhere yet - no Turso or Fly.io accounts set up.
 - Zillow's real alert-email/page links are wrapped in click-tracking
   redirects the current extraction won't resolve - not fixed since

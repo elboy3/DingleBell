@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api";
+import { useCategoryRate } from "../hooks/useCategoryRate";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
@@ -26,9 +27,7 @@ export function Swipe({ user }: { user: string }) {
     decide(id);
     await api.swipe(id, direction);
   };
-  const onCategoryRate = async (id: number, category: string, score: number) => {
-    await api.setCategoryRating(id, category, score);
-  };
+  const onCategoryRate = useCategoryRate(() => {});
 
   if (queue === null) return <p className="empty">Loading...</p>;
 

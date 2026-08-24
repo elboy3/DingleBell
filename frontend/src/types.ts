@@ -13,7 +13,6 @@ export interface Listing {
   baths: number | null;
   sqft: number | null;
   neighborhood: string | null;
-  listing_agent: string | null;
   photo_url: string | null;
   open_house_raw: string | null;
   open_house_date: string | null;
@@ -21,8 +20,6 @@ export interface Listing {
   ai_score: number | null;
   ai_reasoning: string | null;
   first_seen: string;
-  hidden: number;
-  hidden_reason: string | null;
   swipes: Record<string, string>;
   match_status: "pending" | "match" | "miss";
   reactions: Record<string, Reaction>;

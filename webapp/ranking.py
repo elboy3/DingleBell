@@ -1,5 +1,6 @@
-"""Shared rating-combination logic, used by both the feed and the listing
-detail page so they never disagree about what "our rating" means.
+"""Shared rating-combination logic, used across the swipe/inbox/leaderboard
+routes and the listing detail page so they never disagree about what "our
+rating" means.
 
 Deliberately MIN, not average, of the two people's ratings when both have
 rated: the goal is a place they both like, so one person's low rating

@@ -25,8 +25,6 @@ export const api = {
   listings: (params: Record<string, string>) =>
     request<Listing[]>(`/listings?${new URLSearchParams(params)}`),
   listing: (id: number) => request<Listing>(`/listings/${id}`),
-  setRating: (id: number, rating: number) =>
-    request<{ ok: boolean }>(`/listings/${id}/rating`, { method: "POST", body: JSON.stringify({ rating }) }),
   setComment: (id: number, comment: string) =>
     request<{ ok: boolean }>(`/listings/${id}/comment`, {
       method: "POST",
@@ -52,6 +50,4 @@ export const api = {
   inbox: () => request<Listing[]>("/inbox"),
   passed: () => request<Listing[]>("/passed"),
   offMarket: () => request<Listing[]>("/off-market"),
-  openHouses: (favoritesOnly: boolean) =>
-    request<Listing[]>(`/open-houses?favorites_only=${favoritesOnly}`),
 };

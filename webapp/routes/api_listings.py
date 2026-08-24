@@ -1,7 +1,9 @@
-"""The main JSON API: feed (sort/filter), listing detail, and the
-rating/comment/hidden actions."""
+"""The main JSON API: swipe queue, matches (Inbox), the Leaderboard,
+listing detail, and the comment/hidden/swipe/category-rating actions."""
 
 from fastapi import APIRouter, Body, HTTPException, Request
+
+from apt_agent.store import ListingStore
 
 from ..categories import CATEGORY_KEYS
 from ..deps import get_current_user, get_store
@@ -17,52 +19,19 @@ def _require_user(request: Request) -> str:
     return user
 
 
-def _parse_int(raw: str | None) -> int | None:
-    """Query params arrive as strings - an empty string (a cleared HTML
-    number input) is "unset", not a parse error, so this needs to handle
-    that before FastAPI's automatic int coercion ever sees it."""
-    if raw is None or raw == "":
-        return None
-    return int(raw)
+def _enriched_listings(store: ListingStore, *, include_hidden: bool) -> list[dict]:
+    return enrich(store.all_listings(include_hidden=include_hidden), store)
 
 
 @router.get("/listings")
-def list_listings(
-    request: Request,
-    sort: str = "ai",
-    min_score: str | None = None,
-    neighborhood: str | None = None,
-    price_min: str | None = None,
-    price_max: str | None = None,
-    available_before: str | None = None,
-    needs_review: str | None = None,
-    only_matched: bool = False,
-):
-    user = _require_user(request)
+def list_listings(request: Request, sort: str = "leaderboard_shared", only_matched: bool = False):
+    """Only used by the Leaderboard's four tabs now - filtering/sorting for
+    the old grid-browse Feed page was removed along with that page."""
+    _require_user(request)
     store = get_store()
-    listings = enrich(store.all_listings(include_hidden=False), store)
-    listings = filter_listings(
-        listings,
-        neighborhood=neighborhood,
-        price_min=_parse_int(price_min),
-        price_max=_parse_int(price_max),
-        available_before=available_before,
-        needs_review=needs_review,
-        viewer=user,
-        only_matched=only_matched,
-    )
-    listings = sort_listings(listings, sort)
-
-    min_score_val = _parse_int(min_score)
-    if min_score_val is not None and not sort.startswith("leaderboard"):
-        key = "ai_score" if sort == "ai" else "both_rating"
-        listings = [
-            listing
-            for listing in listings
-            if listing.get(key) is not None and listing[key] >= min_score_val
-        ]
-
-    return listings
+    listings = _enriched_listings(store, include_hidden=False)
+    listings = filter_listings(listings, only_matched=only_matched)
+    return sort_listings(listings, sort)
 
 
 @router.get("/listings/{listing_id}")
@@ -77,13 +46,6 @@ def get_listing(request: Request, listing_id: int):
     if not matches:
         raise HTTPException(404, "not found")
     return enrich(matches, store)[0]
-
-
-@router.post("/listings/{listing_id}/rating")
-def set_rating(request: Request, listing_id: int, rating: int = Body(..., embed=True)):
-    user = _require_user(request)
-    get_store().set_rating(listing_id, user, rating)
-    return {"ok": True}
 
 
 @router.post("/listings/{listing_id}/comment")
@@ -137,10 +99,12 @@ def set_category_rating(
     # The overall star rating (used for sorting/leaderboards) follows the
     # average of this user's category scores once they've rated any -
     # category ratings are the detailed "why", the star rating stays the
-    # single number everything else already sorts/filters on.
+    # single number everything else already sorts/filters on. Round half
+    # up (not Python's round-half-to-even default) so e.g. a 2-and-3
+    # average of 2.5 becomes 3, matching what a user would expect.
     user_categories = store.get_category_ratings_for_listing(listing_id).get(user, {})
     if user_categories:
-        avg_rating = round(sum(user_categories.values()) / len(user_categories))
+        avg_rating = int(sum(user_categories.values()) / len(user_categories) + 0.5)
         store.set_rating(listing_id, user, avg_rating)
     return {"ok": True}
 
@@ -152,7 +116,7 @@ def swipe_queue_listings(request: Request):
     person has done - swiping is blind."""
     user = _require_user(request)
     store = get_store()
-    listings = enrich(store.all_listings(include_hidden=False), store)
+    listings = _enriched_listings(store, include_hidden=False)
     return swipe_queue_for_user(listings, user)
 
 
@@ -162,7 +126,7 @@ def inbox_listings(request: Request):
     comment review happens, via each one's detail page."""
     _require_user(request)
     store = get_store()
-    listings = enrich(store.all_listings(include_hidden=False), store)
+    listings = _enriched_listings(store, include_hidden=False)
     return [listing for listing in listings if listing["match_status"] == "match"]
 
 
@@ -173,7 +137,7 @@ def passed_listings(request: Request):
     passed), and a partial pass (one passed, the other hasn't swiped yet)."""
     _require_user(request)
     store = get_store()
-    listings = enrich(store.all_listings(include_hidden=True), store)
+    listings = _enriched_listings(store, include_hidden=True)
     return [
         listing
         for listing in listings
@@ -197,10 +161,10 @@ def off_market_listings(request: Request):
 
 @router.get("/needs-scan")
 def needs_scan_listings(request: Request):
-    """Listings missing a photo or address - shown separately from the main
-    feed so incomplete rows don't clutter review, and used as the backfill
-    queue for the next browser scan."""
+    """Listings missing a photo or address - shown separately from the
+    swipe queue so incomplete rows don't clutter review, and used as the
+    backfill queue for the next browser scan."""
     _require_user(request)
     store = get_store()
-    listings = enrich(store.all_listings(include_hidden=True), store)
+    listings = _enriched_listings(store, include_hidden=True)
     return [listing for listing in listings if listing["needs_backfill"]]
