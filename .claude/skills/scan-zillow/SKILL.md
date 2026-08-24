@@ -54,12 +54,15 @@ try again later.
    hard-filter either.
 
 3. Build the search URL for one neighborhood:
-   `https://www.zillow.com/{neighborhood-slug}-brooklyn-ny/rentals/{page}_p/?searchQueryState=...`
-   where `{neighborhood-slug}` is the neighborhood name lowercased with
-   spaces replaced by hyphens (e.g. "Fort Greene" -> `fort-greene`,
-   "Clinton Hill" -> `clinton-hill`), `{page}_p/` is omitted for page 1
-   and `2_p/`, `3_p/`, etc. for later pages, and the URL-encoded
-   `searchQueryState` JSON is:
+   `https://www.zillow.com/{neighborhood-slug}/rentals/?searchQueryState=...`
+   where `{neighborhood-slug}` is usually the neighborhood name lowercased
+   with spaces replaced by hyphens plus `-brooklyn-ny` (e.g. "Fort Greene"
+   -> `fort-greene-brooklyn-ny`, "Clinton Hill" -> `clinton-hill-brooklyn-ny`)
+   - **but not always**: `williamsburg-brooklyn-ny` silently redirects to a
+   different, adjacent neighborhood ("East Williamsburg"); the correct slug
+   there is `williamsburg-new-york-ny`. Don't trust the guessed pattern
+   blindly - see the sanity-check below. The URL-encoded `searchQueryState`
+   JSON is:
    ```json
    {
      "isMapVisible": false,
@@ -74,50 +77,76 @@ try again later.
      }
    }
    ```
-   **`isMapVisible: false` matters** - with the map visible, Zillow's
-   results list only renders ~5 cards into the DOM at a time no matter
-   how it's scrolled (it's virtualized, and scripted scrollTop changes /
-   synthetic wheel events don't reliably trigger it to render more, at
-   least not in initial testing - a fresh approach could revisit this
-   if a future session has a better technique). With the map hidden, the
-   full-width list layout renders ~11-18 cards in the initial DOM without
-   any scrolling needed at all, which is what makes per-page extraction
-   (no scroll-trickery required) actually work.
+   `isMapVisible` doesn't actually matter for the extraction technique
+   below (unlike the older DOM-scraping approach) - `false` is just kept
+   for a cleaner, unscrolled screenshot in step 7.
 
    After the first navigation, sanity-check the page title (`page_info()`)
    actually matches the intended neighborhood, not a redirect to something
-   else or a 0-result page - neighborhood slugs aren't all confirmed, only
-   `fort-greene-brooklyn-ny` has been verified to resolve correctly so far.
+   else or a 0-result page.
 
-4. Read `apt_agent/browser_scan_helpers.py` for `PAGE_PACING_SECONDS` and
-   `MAX_PAGES_PER_SESSION` (shared across both scan skills - don't hardcode
-   them here). Read `apt_agent/zillow_scan/extract.js`'s contents.
+4. Read `apt_agent/browser_scan_helpers.py` for `PAGE_PACING_SECONDS`,
+   `MAX_PAGES_PER_SESSION`, and `matches_config_bounds()` (shared across
+   both scan skills - don't hardcode them here). Read
+   `apt_agent/zillow_scan/extract_next_data.js`'s contents.
 
-5. For page 1 through `MAX_PAGES_PER_SESSION` (or until a page returns zero
-   cards, whichever comes first):
-   - `goto_url(...)` to that page's URL (reuse one tab across pages - don't
-     open a new tab per page).
+5. For page loads (see the note below on why "pages" barely applies
+   anymore) up to `MAX_PAGES_PER_SESSION`:
+   - `goto_url(...)` to the neighborhood's URL (reuse one tab across
+     loads - don't open a new tab per load).
    - `wait_for_load()`.
-   - Run `extract.js`'s content via `js(...)` to get that page's raw cards
-     (no scrolling needed - see step 3's note).
+   - Run `extract_next_data.js`'s content via `js(...)` to get that
+     load's raw results. **This is the primary extraction technique** -
+     it reads Zillow's own `__NEXT_DATA__` script tag (structured JSON
+     the page's React app hydrates from), which is both more complete
+     and more reliable than DOM-scraping `article.property-card` text
+     (confirmed 2026-08-24: a same-query Clinton Hill re-test got 26
+     results this way versus only 6 from the older `extract.js` earlier
+     the same day - `extract.js`'s `wait_for_load()` was returning before
+     the client-side card list finished hydrating, a timing race, not a
+     hard cap). If `extract_next_data.js` returns `null` (the
+     `__NEXT_DATA__` tag was missing or Zillow restructured it), fall
+     back to `extract.js` + `zillow_scan_helpers.parse_page_json()`
+     instead of failing the session.
    - Take a screenshot (`browser_screenshot`) of the page too, if
      `taste_profile.md` exists (see step 7 - skip if there's no profile).
-   - Accumulate the raw cards (and that page's screenshot, if taken).
-   - If there are more pages left to fetch, `time.sleep(PAGE_PACING_SECONDS)`
+   - Accumulate the raw results (and that load's screenshot, if taken).
+   - If there are more loads left to make, `time.sleep(PAGE_PACING_SECONDS)`
      before navigating to the next one. **Do not skip this.**
    - If a page's `page_info()` title suggests a block page ("Access to this
      page has been denied" or similar), stop immediately, tell the user, and
      do not retry in the same session (see the note above about not trying
-     to dodge it with a fresh identity either).
+     to dodge it with a fresh identity either). Blocks have recurred more
+     than once around the 3rd-5th paced load in a session even with correct
+     pacing - pacing reduces the odds, it doesn't guarantee immunity.
 
-   A neighborhood with under ~50-60 listings (check the page title's
-   "N Rentals" count on the first load) fits in one session at ~11-18
-   cards/page. A bigger one will need multiple sessions - that's fine,
-   `already_seen()`-based dedup makes resuming safe, same as StreetEasy.
+   **This technique still only returns roughly one page's worth of
+   results per load** (matched `categoryTotals.cat1.totalResultCount`'s
+   first page in testing, e.g. 18 of 29 for Fort Greene) - it fixes data
+   *quality* and *reliability* per load, not Zillow's own pagination,
+   which separately has been confirmed unreliable (silently drops filter
+   state past page 1 - see `matches_config_bounds()` and DECISIONS.md).
+   **Practical consequence: budget each paced session as roughly one
+   load per neighborhood, spread across more neighborhoods**, rather than
+   trying to paginate deep into one - a neighborhood bigger than what one
+   load returns (Williamsburg, at 221+ total, is by far the biggest of
+   the 7) will need many sessions over time, same as before. Re-running
+   the same neighborhood in a later session is safe and useful even
+   without new pagination - Zillow's own result ordering shifts over
+   time (by "days on market," new listings, etc.), so a repeat load
+   often surfaces genuinely new results, as happened with Clinton Hill.
 
-6. Once done paging, run (still inside `browser_exec`) `apt_agent.
-   zillow_scan_helpers.parse_page_json` on the accumulated list, then
-   `apt_agent.browser_scan_helpers.dedupe_within_batch` on the result.
+6. Once done, run (still inside `browser_exec`, or after copying the raw
+   JSON out to a scratch file) `apt_agent.zillow_scan_helpers.
+   parse_next_data_page()` on the accumulated list (this both structures
+   the fields and drops Zillow's own "relaxed"/building-aggregator cards
+   - see that function's docstring), then `apt_agent.
+   browser_scan_helpers.dedupe_within_batch()` on the result, then
+   `apt_agent.browser_scan_helpers.matches_config_bounds()` per listing
+   to catch anything that snuck past Zillow's own filter (this has
+   happened for real - see DECISIONS.md). Set `neighborhood` on each kept
+   listing to the neighborhood this session is scanning -
+   `parse_next_data_result()` deliberately doesn't guess it.
 
 7. **AI scoring - no API key needed, you do this yourself.** Same
    procedure as `.claude/skills/scan-streeteasy/SKILL.md` step 7: if
@@ -131,15 +160,21 @@ try again later.
 
 9. Run `python -m apt_agent.browser_import <scratch-file-path>` via Bash
    (use the repo's `.venv/bin/python` if present) - the same importer the
-   StreetEasy scan uses, `source` is already set to `"zillow-browser-scan"`
-   by `zillow_scan_helpers.parse_card` so it's distinguishable from both
-   the StreetEasy scan and the automated email import in `listings.source`.
+   StreetEasy scan uses. `source` is set to `"zillow-browser-scan"` by
+   `parse_next_data_result()`/`parse_card()`, distinguishing this from
+   both the StreetEasy scan and the automated email import in
+   `listings.source`.
 
-10. Report back to the user: which neighborhood, how many pages scanned vs.
-    the total the page header reported, and the `{new, already_seen,
-    backfilled, would_alert, scored}` import stats. If the neighborhood
-    wasn't fully covered, say so explicitly and note it's safe to resume
-    later (already-seen listings are skipped automatically). Track which
-    of the 7 `config.yaml` neighborhoods still need a first pass -
-    `DECISIONS.md`/`STATUS.md` is a reasonable place to log progress across
-    sessions until the backlog is fully caught up.
+10. Report back to the user: which neighborhood(s), how many loads made
+    vs. the total Zillow itself reported (title's "N Rentals," and/or
+    `categoryTotals.cat1.totalResultCount` if you captured it - note
+    these two numbers have been observed to disagree, see DECISIONS.md),
+    and the `{new, already_seen, backfilled, would_alert, scored}` import
+    stats per neighborhood. If a neighborhood wasn't fully covered, say
+    so explicitly and note it's safe to resume later (already-seen
+    listings are skipped automatically, and re-running the same
+    neighborhood later can still surface new results even without
+    Zillow's own pagination working, since results reorder over time).
+    Update the coverage table in `STATUS.md` (captured / reported total
+    per neighborhood) - that table, not a vague "done" feeling, is the
+    project's actual answer to "how do we know we've got everything."

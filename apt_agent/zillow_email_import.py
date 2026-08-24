@@ -49,10 +49,23 @@ QUERY = "from:rental-instant-updates@mail.zillow.com newer_than:1d"
 # resolvable zpid are both optional - paid "premium property" placements
 # (seen in the wild pointing at a different city than the saved search)
 # have neither, and get filtered out downstream for lacking a zpid.
+#
+# Two trailing bits are optional, confirmed against real captured emails
+# rather than guessed - both caused silent, total drops of a listing
+# block before this was fixed (2026-08-24):
+# - The price line sometimes has extra text after "$X/mo" (e.g. a
+#   "New Rental Match" digest email's "$4,325/mo | Total monthly price").
+# - The bed/bath/sqft line's trailing "| <amenity>" (e.g. "| Pets") isn't
+#   always present - a "just listed" email's own featured listing (the
+#   literal reason the email was sent) had no trailing tag at all
+#   ("2 bd | 2 ba | 1,194 sqft"), while bundled "you might also like"
+#   entries in the same email happened to all have one - so this wasn't
+#   even limited to a rare block, it silently dropped a listing type
+#   this pipeline specifically exists to catch.
 _BLOCK_RE = re.compile(
     r"For rent\.?\s*(?:NEW\.)?\s*\n+"
-    r"\$([\d,]+)/mo\s*\n+"
-    r"(Studio|\d+(?:\.\d+)?) bd \| (\d+(?:\.\d+)?) ba \| (?:--|([\d,]+)) sqft \| \w+\s*\n+"
+    r"\$([\d,]+)/mo(?:\s*\|[^\n]*)?\s*\n+"
+    r"(Studio|\d+(?:\.\d+)?) bd \| (\d+(?:\.\d+)?) ba \| (?:--|([\d,]+)) sqft(?:\s*\|\s*\w+)?\s*\n+"
     r"([^\n]+)\s*\n+"
     r"(?:Listing by: ([^\n]+)\s*\n+)?"
     r"View this listing -\s*\n+"

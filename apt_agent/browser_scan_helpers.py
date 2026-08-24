@@ -94,6 +94,31 @@ def parse_page_json(raw_cards: list[dict]) -> list[dict]:
     return [parse_card(c) for c in raw_cards]
 
 
+def matches_config_bounds(listing: dict, cfg: dict) -> bool:
+    """True if listing's price/beds/baths (any that are present) fall
+    within config.yaml's search: bounds. A listing with a field left
+    unset (None) is never rejected on that field - unknown, don't block
+    on it, same pattern as filters.py.
+
+    Exists because Zillow's own pagination has been observed to
+    silently drop the price/beds/baths filter state past page 1 -
+    sometimes redirecting to a canonicalized URL with no
+    searchQueryState at all, serving its *unfiltered* default result
+    set instead (see DECISIONS.md, "Zillow's pagination silently drops
+    the search filter state"). Anything past a scan's first page should
+    be treated as untrusted and re-checked against this before import,
+    rather than assumed to already respect the search config."""
+    search_cfg = cfg["search"]
+    price, beds, baths = listing.get("price"), listing.get("beds"), listing.get("baths")
+    if price is not None and not (search_cfg["price_min"] <= price <= search_cfg["price_max"]):
+        return False
+    if beds is not None and beds < search_cfg["beds_min"]:
+        return False
+    if baths is not None and baths < search_cfg["baths_min"]:
+        return False
+    return True
+
+
 def dedupe_within_batch(listings: list[dict]) -> list[dict]:
     """Same listing can appear on more than one page within a single
     scan session (StreetEasy's own sort can shift results as you
