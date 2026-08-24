@@ -406,3 +406,46 @@ philosophy rather than default to more abstraction. Real findings fixed:
   statements), and splitting `ListingCard.tsx` (still readable at three
   orthogonal prop dimensions; revisit only if a fifth swipe-only UI
   element gets added).
+
+### Zillow instant-update emails: a second, fully-automated ingestion path
+The user found that Zillow (unlike StreetEasy) has a `rental-instant-
+updates@mail.zillow.com` sender that fires within minutes of a new
+listing, individually, not as a thin digest - the exact "speed" problem
+the original email pipeline never actually got from StreetEasy. Turned
+out to be far richer than expected: the plain-text body already has
+structured price/beds/baths/sqft/address/agent as free text, and the
+HTML body has a real photo on `photos.zillowstatic.com` - the same
+public, no-auth CDN the browser-scan already relies on - plus each
+listing's Zillow property ID (zpid), decodable straight out of the
+"View this listing" link's click-tracking `target=` query param
+without ever following the redirect or fetching a page. That's enough
+to build a canonical `zillow.com/homedetails/{zpid}_zpid/` URL with
+zero browser interaction.
+
+Two non-obvious extraction details, found by inspecting a real saved
+email rather than guessing: (1) the photo isn't an `<img src>` - it's a
+`background=` attribute on a `<td>`/`<th>` (an email-HTML convention
+with an Outlook VML fallback), so photo-to-listing correlation has to
+scope by each listing's own `<table role="group" aria-label="property">`,
+not by climbing the DOM from the link. (2) the anchor's href is itself
+the click-tracking wrapper, so the zpid must be decoded from the
+(percent-encoded) `target=` param via `urllib.parse`, not
+substring-matched against the raw href text.
+
+New `apt_agent/zillow_email_import.py`, reusing `browser_import.
+import_listings()` rather than duplicating its dedup/backfill logic.
+Bundled "Other rentals you might like" listings in the same email get
+imported too (free breadth, same full data). Since this needs no
+interactive session at all (pure Gmail API + regex), it runs
+unattended on the existing GitHub Actions poll cron - the first fully
+automated ingestion path in this project, unlike the StreetEasy browser
+scan which can only ever be interactive. AI scoring is deliberately
+left NULL for these (no live session watching an unattended cron run
+to judge a photo itself) rather than wiring up the untested API-key
+fallback path just for this - a user decision, not an assumption.
+
+Verified for real against the live inbox before considering this done
+(not just "should work from reading the code," per this project's
+established norm): 42 new listings imported on the first real run, 41
+of 42 with complete photo+address data, the 1 gap falling gracefully
+into the existing Needs Scan queue exactly as designed.

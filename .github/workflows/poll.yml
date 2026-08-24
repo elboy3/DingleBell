@@ -54,6 +54,14 @@ jobs:
           NOTIFY_FROM_ADDRESS: ${{ secrets.NOTIFY_FROM_ADDRESS }}
         run: python -m apt_agent.main ${{ (github.event.inputs.dry_run == 'true') && '--dry-run' || '' }}
 
+      - name: Import Zillow instant-update listings for the swipe app
+        # Separate from the email-alert pipeline above - parses Zillow's
+        # per-listing "just listed" emails straight into listings.db for
+        # the webapp's swipe queue, no browser/interactive session or
+        # alert email involved. See apt_agent/zillow_email_import.py.
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: python -m apt_agent.zillow_email_import
+
       - name: Commit updated listings.db
         # This is what makes dedup actually persist across runs - GitHub
         # Actions runners are ephemeral, so without committing the DB

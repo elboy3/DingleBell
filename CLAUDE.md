@@ -160,8 +160,9 @@ pending plan.
   independent of the user's real browser and its permission prompts,
   so it works even when the user isn't physically present to click
   anything.
-- **Ingestion via an authenticated browser scan, not a cron job.**
-  The `browser-use` MCP plugin drives the user's real, already-logged-in
+- **Two ingestion paths now - StreetEasy needs a browser, Zillow doesn't.**
+  StreetEasy: an authenticated browser scan, not a cron job. The
+  `browser-use` MCP plugin drives the user's real, already-logged-in
   Brave/Chrome session to load StreetEasy's saved-search results page
   directly - this bypasses the PerimeterX wall that blocks anonymous
   scraping, because it's a real user's own browser loading a page
@@ -172,6 +173,22 @@ pending plan.
   into `listings.db`, dedups, never sends email). This only works
   interactively (drives a live local browser) - run whenever someone
   asks, not on a schedule.
+
+  Zillow: `apt_agent/zillow_email_import.py`, fully unattended, on the
+  existing GitHub Actions poll cron. Zillow's `rental-instant-updates@
+  mail.zillow.com` sender fires within minutes of a new listing (unlike
+  StreetEasy's thin digests) with full structured data in the plain-text
+  body (price/beds/baths/address/agent) plus a real photo on
+  `photos.zillowstatic.com` - the same public, no-auth CDN the browser
+  scan already uses - so this needs no page fetch at all. Each
+  listing's Zillow property ID (zpid), decoded from the "View this
+  listing" link's click-tracking `target=` param, builds a stable
+  canonical URL (`zillow.com/homedetails/{zpid}_zpid/`) without ever
+  resolving a redirect. Bundled "Other rentals you might like" entries
+  in the same email get imported too (free breadth). AI scoring is left
+  NULL here - there's no live session watching a cron run to judge a
+  photo itself; run `poe rescore` to backfill via the API-key fallback
+  path if you want these scored.
 - **Pacing matters even with a real authenticated session.** A tight
   loop of 13 rapid sequential page loads tripped PerimeterX; a single
   organic load didn't. Mitigated with `PAGE_PACING_SECONDS = 20` and

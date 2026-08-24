@@ -122,6 +122,15 @@ Built and verified locally (all via Claude sessions):
       other dead code/CSS, consolidated a duplicated `KNOWN_USERS`
       constant, and brought `CLAUDE.md` back in sync with the current
       pages/routes. See `DECISIONS.md`.
+- [x] [CLAUDE] `apt_agent/zillow_email_import.py` - a second, fully
+      automated ingestion path. Zillow's `rental-instant-updates@
+      mail.zillow.com` sender fires per-listing within minutes (found by
+      the user); the email body alone has full structured data plus a
+      real photo (no page fetch needed at all), so this runs unattended
+      on the existing GitHub Actions poll cron - verified for real
+      against the live inbox, 42 listings imported on the first run.
+      AI scoring deliberately left NULL for these (no live session to
+      judge a photo in an unattended run). See `DECISIONS.md`.
 
 Needs you (all [MANUAL] - real accounts/credentials/content only you can provide):
 - [ ] [MANUAL] Send reference photos or StreetEasy links (liked + disliked)
