@@ -1,4 +1,4 @@
-"""The main JSON API: swipe queue, matches (Inbox), the Leaderboard,
+"""The main JSON API: swipe queue, Matches, the Leaderboard,
 listing detail, and the comment/hidden/swipe/category-rating actions."""
 
 from fastapi import APIRouter, Body, HTTPException, Request
@@ -120,8 +120,8 @@ def swipe_queue_listings(request: Request):
     return swipe_queue_for_user(listings, user)
 
 
-@router.get("/inbox")
-def inbox_listings(request: Request):
+@router.get("/matches")
+def matches_listings(request: Request):
     """Matches - both people swiped right. Where the deeper category-rating/
     comment review happens, via each one's detail page."""
     _require_user(request)

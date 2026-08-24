@@ -4,10 +4,10 @@ import { useCategoryRate } from "../hooks/useCategoryRate";
 import type { Listing } from "../types";
 import { ListingCard } from "../components/ListingCard";
 
-export function Inbox({ user }: { user: string }) {
+export function Matches({ user }: { user: string }) {
   const [listings, setListings] = useState<Listing[]>([]);
 
-  const load = async () => setListings(await api.inbox());
+  const load = async () => setListings(await api.matches());
   useEffect(() => {
     load();
   }, []);

@@ -1,4 +1,4 @@
-"""Shared rating-combination logic, used across the swipe/inbox/leaderboard
+"""Shared rating-combination logic, used across the swipe/matches/leaderboard
 routes and the listing detail page so they never disagree about what "our
 rating" means.
 

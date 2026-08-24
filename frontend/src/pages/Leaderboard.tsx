@@ -8,7 +8,7 @@ const TABS: { key: string; label: string; empty: string }[] = [
   {
     key: "leaderboard_shared",
     label: "Shared",
-    empty: "Nobody's rated a match yet - go rate some in the Inbox.",
+    empty: "Nobody's rated a match yet - go rate some in Matches.",
   },
   { key: "leaderboard_elliott", label: "Elliott", empty: "Elliott hasn't rated anything yet." },
   { key: "leaderboard_madison", label: "Madison", empty: "Madison hasn't rated anything yet." },

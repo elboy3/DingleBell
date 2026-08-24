@@ -13,7 +13,7 @@ interface Props {
   onCategoryRate: (id: number, category: string, score: number) => void;
   /** minimal: the Swipe page - photo/price/facts/AI score only, no ratings
    * or category detail, so a fast yes/no decision isn't cluttered.
-   * summary (default): Inbox/Passed/Needs Scan/Leaderboard grids - adds
+   * summary (default): Matches/Passed/Needs Scan/Leaderboard grids - adds
    * the two people's overall rating, but still no category panel/comments.
    * full: the listing's own detail page - everything, including the
    * category-rating panel (the only place it's editable). */

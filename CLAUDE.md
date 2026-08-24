@@ -14,7 +14,7 @@ Two things, in one repo, at different points in their life:
    flow: Elliott and Madison each swipe left/right on Brooklyn listings
    independently and blind to each other (an AI taste-match score is
    computed automatically to help prioritize); a listing becomes a
-   match only when **both** swipe right, moving it into a shared Inbox
+   match only when **both** swipe right, moving it into a shared Matches page
    for category ratings and comments; a ranked Leaderboard sits
    downstream of that. See "The second pivot" below for why this isn't
    the original shared-feed design. Fed by an interactive browser-driven
@@ -80,7 +80,7 @@ a dating app... we each do this separately... for each of us we never
 see the same listing twice."* So the shared feed, its filters, and a
 shared "interested" flag were replaced with true per-user independent
 swiping (`apt_agent/store.py`'s `listing_swipes` table) - a listing
-only becomes a match (both swiped right) and moves to the shared Inbox
+only becomes a match (both swiped right) and moves to the shared Matches page
 once both have decided. A left swipe is personal and permanent (no
 undo), but stays visible in a full-transparency Passed view. The
 Leaderboard survived this pivot, now scoped to matches instead of the
@@ -144,7 +144,7 @@ pending plan.
   hostnames count as cross-*site* for `SameSite=Lax` cookie purposes
   even though both are loopback. See DECISIONS.md.
 - **Pages**: Swipe (home - one-at-a-time personal queue, left/right,
-  highest AI match first, no filter UI), Inbox (matches - both swiped
+  highest AI match first, no filter UI), Matches (both swiped
   right - where category ratings/comments happen), ListingDetail
   (Google Maps embed - keyless, no API key - StreetEasy CTA, category
   ratings, comments), Leaderboard (four tabs: shared/elliott/madison/
@@ -281,7 +281,7 @@ pending plan.
 | `webapp/routes/api_identity.py` | `GET`/`POST /api/whoami` - cookie-based identity |
 | `frontend/src/App.tsx` | React Router setup, identity gate |
 | `frontend/src/api.ts` | Fetch client - **must point at `localhost:8000`, not `127.0.0.1:8000`** (cookie hostname match) |
-| `frontend/src/pages/*.tsx` | Swipe (home), Inbox, ListingDetail, Leaderboard, Passed, NeedsScan, WhoAmI |
+| `frontend/src/pages/*.tsx` | Swipe (home), ListingDetail, Matches, Leaderboard, Passed, NeedsScan, WhoAmI |
 | `frontend/src/components/*.tsx` | `ListingCard` (detailLevel/swipeDecide/linkExternally/onDisqualify props), `Stars`, `NavBar` |
 | `frontend/src/hooks/useCategoryRate.ts` | Shared category-rating-then-reload handler, used by every list/detail page |
 | `frontend/src/categories.ts` | Mirrors `webapp/categories.py`'s category list (kept in sync by hand) |

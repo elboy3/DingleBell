@@ -24,6 +24,10 @@ export function ListingDetail({ user }: { user: string }) {
   }, [id]);
 
   const onCategoryRate = useCategoryRate(load);
+  const onSwipe = async (listingId: number, direction: "left" | "right") => {
+    await api.swipe(listingId, direction);
+    load();
+  };
   const saveComment = async () => {
     await api.setComment(Number(id), commentDraft);
     load();
@@ -47,8 +51,10 @@ export function ListingDetail({ user }: { user: string }) {
             listing={listing}
             user={user}
             onCategoryRate={onCategoryRate}
+            onSwipe={onSwipe}
             detailLevel="full"
             linkExternally
+            swipeDecide={!listing.swipes[user]}
           />
         </div>
 

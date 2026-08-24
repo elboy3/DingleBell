@@ -47,7 +47,7 @@ export const api = {
     }),
   needsScan: () => request<Listing[]>("/needs-scan"),
   swipeQueue: () => request<Listing[]>("/swipe-queue"),
-  inbox: () => request<Listing[]>("/inbox"),
+  matches: () => request<Listing[]>("/matches"),
   passed: () => request<Listing[]>("/passed"),
   offMarket: () => request<Listing[]>("/off-market"),
 };

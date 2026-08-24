@@ -2,9 +2,9 @@ import { useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { api } from "./api";
 import { NavBar } from "./components/NavBar";
-import { Inbox } from "./pages/Inbox";
 import { Leaderboard } from "./pages/Leaderboard";
 import { ListingDetail } from "./pages/ListingDetail";
+import { Matches } from "./pages/Matches";
 import { NeedsScan } from "./pages/NeedsScan";
 import { Passed } from "./pages/Passed";
 import { Swipe } from "./pages/Swipe";
@@ -33,7 +33,7 @@ export default function App() {
           ) : (
             <>
               <Route path="/" element={<Swipe user={user} />} />
-              <Route path="/inbox" element={<Inbox user={user} />} />
+              <Route path="/matches" element={<Matches user={user} />} />
               <Route path="/listings/:id" element={<ListingDetail user={user} />} />
               <Route path="/passed" element={<Passed user={user} />} />
               <Route path="/leaderboard" element={<Leaderboard user={user} />} />

@@ -4,7 +4,7 @@ export function NavBar({ user }: { user: string | null }) {
   return (
     <nav className="topnav">
       <NavLink to="/">Swipe</NavLink>
-      <NavLink to="/inbox">Inbox</NavLink>
+      <NavLink to="/matches">Matches</NavLink>
       <NavLink to="/leaderboard">Leaderboard</NavLink>
       <NavLink to="/passed">Passed</NavLink>
       <NavLink to="/needs-scan">Needs Scan</NavLink>
