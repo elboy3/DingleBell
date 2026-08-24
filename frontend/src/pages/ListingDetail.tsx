@@ -12,6 +12,7 @@ export function ListingDetail({ user }: { user: string }) {
   const navigate = useNavigate();
   const [listing, setListing] = useState<Listing | null>(null);
   const [commentDraft, setCommentDraft] = useState("");
+  const [commentSaved, setCommentSaved] = useState(false);
 
   const load = async () => {
     const data = await api.listing(Number(id));
@@ -31,6 +32,7 @@ export function ListingDetail({ user }: { user: string }) {
   };
   const saveComment = async () => {
     await api.setComment(Number(id), commentDraft);
+    setCommentSaved(true);
     load();
   };
 
@@ -114,10 +116,16 @@ export function ListingDetail({ user }: { user: string }) {
       <div className="comment-form">
         <textarea
           value={commentDraft}
-          onChange={(e) => setCommentDraft(e.target.value)}
+          onChange={(e) => {
+            setCommentDraft(e.target.value);
+            setCommentSaved(false);
+          }}
           placeholder="Leave a note..."
         />
-        <button onClick={saveComment}>Save comment</button>
+        <div className="comment-form-actions">
+          <button onClick={saveComment}>Save comment</button>
+          {commentSaved && <span className="save-confirmation">Saved ✓</span>}
+        </div>
       </div>
     </div>
   );

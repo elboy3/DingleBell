@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useCategoryRate } from "../hooks/useCategoryRate";
 import { mapEmbedUrl } from "../mapEmbed";
@@ -12,6 +12,8 @@ export function Swipe({ user }: { user: string }) {
   const [queue, setQueue] = useState<Listing[] | null>(null);
   const [decided, setDecided] = useState(0);
   const [commentDraft, setCommentDraft] = useState("");
+  const [commentSaved, setCommentSaved] = useState(false);
+  const [, setSearchParams] = useSearchParams();
 
   const load = async () => {
     setQueue(await api.swipeQueue());
@@ -27,6 +29,10 @@ export function Swipe({ user }: { user: string }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     setCommentDraft(current?.reactions[user]?.comment || "");
+    setCommentSaved(false);
+    // Reflects which listing is on screen in the URL - just for reference
+    // (sharing/debugging), doesn't drive which listing loads.
+    setSearchParams(current ? { id: String(current.id) } : {}, { replace: true });
   }, [current?.id]);
 
   const decide = (id: number) => {
@@ -46,6 +52,7 @@ export function Swipe({ user }: { user: string }) {
   const saveComment = async () => {
     if (!current) return;
     await api.setComment(current.id, commentDraft);
+    setCommentSaved(true);
   };
 
   if (queue === null) return <p className="empty">Loading...</p>;
@@ -98,10 +105,16 @@ export function Swipe({ user }: { user: string }) {
               <div className="comment-form">
                 <textarea
                   value={commentDraft}
-                  onChange={(e) => setCommentDraft(e.target.value)}
+                  onChange={(e) => {
+                    setCommentDraft(e.target.value);
+                    setCommentSaved(false);
+                  }}
                   placeholder="Leave a note while you decide..."
                 />
-                <button onClick={saveComment}>Save comment</button>
+                <div className="comment-form-actions">
+                  <button onClick={saveComment}>Save comment</button>
+                  {commentSaved && <span className="save-confirmation">Saved ✓</span>}
+                </div>
               </div>
             </div>
           </div>

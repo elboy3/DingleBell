@@ -7,7 +7,13 @@ from apt_agent.store import ListingStore
 
 from ..categories import CATEGORY_KEYS
 from ..deps import get_current_user, get_store
-from ..feed_logic import enrich, filter_listings, sort_listings, swipe_queue_for_user
+from ..feed_logic import (
+    enrich,
+    filter_listings,
+    matches_for_user,
+    sort_listings,
+    swipe_queue_for_user,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -122,19 +128,23 @@ def swipe_queue_listings(request: Request):
 
 @router.get("/matches")
 def matches_listings(request: Request):
-    """Matches - both people swiped right. Where the deeper category-rating/
-    comment review happens, via each one's detail page."""
-    _require_user(request)
+    """Real matches (both swiped right) plus, for this viewer, listings
+    they liked that their partner hasn't decided on yet - see
+    matches_for_user()'s docstring for why that second group is
+    deliberately scoped per-viewer rather than shared."""
+    user = _require_user(request)
     store = get_store()
     listings = _enriched_listings(store, include_hidden=False)
-    return [listing for listing in listings if listing["match_status"] == "match"]
+    return matches_for_user(listings, user)
 
 
 @router.get("/passed")
 def passed_listings(request: Request):
     """Full-transparency audit trail: every listing with at least one "left"
     swipe recorded so far - covers both-passed, a mismatch (one liked, one
-    passed), and a partial pass (one passed, the other hasn't swiped yet)."""
+    passed), and a partial pass (one passed, the other hasn't swiped yet).
+    Each listing's `mismatch` field (from enrich()) lets the frontend split
+    genuine disagreements out from the rest."""
     _require_user(request)
     store = get_store()
     listings = _enriched_listings(store, include_hidden=True)

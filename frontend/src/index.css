@@ -265,6 +265,8 @@ main { max-width: 960px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
   padding: 0.55rem 1.3rem; border-radius: 999px; cursor: pointer;
 }
 .comment-form button:hover { background: var(--accent-hover); }
+.comment-form-actions { display: flex; align-items: center; gap: 0.8rem; }
+.save-confirmation { color: #008a05; font-weight: 700; font-size: 0.88rem; }
 
 h3 { font-size: 1.05rem; font-weight: 800; margin: 1.5rem 0 0.6rem; }
 
@@ -284,6 +286,23 @@ h3 { font-size: 1.05rem; font-weight: 800; margin: 1.5rem 0 0.6rem; }
 .swipe-tag.liked { background: #e7f6ec; color: #1a7a3e; }
 .swipe-tag.passed { background: #f0f0f0; color: #717171; }
 .swipe-tag.pending { background: var(--accent-tint); color: var(--accent); }
+
+.passed-row-list {
+  display: flex; flex-direction: column; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden; background: var(--surface);
+}
+.passed-row {
+  display: flex; align-items: center; gap: 0.9rem; padding: 0.6rem 0.9rem;
+  text-decoration: none; color: var(--text); border-bottom: 1px solid var(--border);
+}
+.passed-row:last-child { border-bottom: none; }
+.passed-row:hover { background: var(--bg-subtle); }
+.passed-row-thumb { width: 52px; height: 52px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+.passed-row-thumb-empty { background: var(--bg-subtle); border: 1px solid var(--border); }
+.passed-row-info { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 0.15rem; }
+.passed-row-address { font-weight: 800; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.passed-row-facts { font-size: 0.82rem; color: var(--text-muted); }
+.passed-row .swipe-tags { margin-bottom: 0; flex-shrink: 0; }
 
 .whoami-page { max-width: 320px; margin: 5rem auto; text-align: center; }
 .whoami-page h1 { font-size: 1.5rem; font-weight: 800; }

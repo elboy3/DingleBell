@@ -22,6 +22,8 @@ export interface Listing {
   first_seen: string;
   swipes: Record<string, string>;
   match_status: "pending" | "match" | "miss";
+  mismatch: boolean;
+  waiting_on?: string | null;
   reactions: Record<string, Reaction>;
   ratings: { elliott: number | null; madison: number | null };
   both_rating: number | null;
