@@ -22,6 +22,7 @@ search:
     - "Boerum Hill"
     - "Clinton Hill"
     - "Prospect Heights"
+    - "Williamsburg"
 
   no_fee_only: false        # false = show both fee and no-fee
   pets_required: false
